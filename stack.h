@@ -45,7 +45,7 @@ struct stack {
     inline void push(const T& x) {
         if (tail == N_LEN) {
             auto *tmp = new T[N_LEN << 1];
-            memcpy(tmp, content, sizeof(T) * N_LEN);
+            memcpy(content, tmp, sizeof(T) * N_LEN);
             delete[] content;
             content = tmp;
             N_LEN <<= 1;

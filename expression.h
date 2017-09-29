@@ -10,8 +10,8 @@
 using std::string;
 using std::vector;
 
-static string ops[] = {"=", ">=", "<=", ">", "<", "&", "|"};
-static string bls[] = {"True", "False", "Undefined"};
+const string ops[] = {"=", ">=", "<=", ">", "<", "&", "|"};
+const string bls[] = {"True", "False", "Undefined"};
 
 struct Expression {
     using PropValInt = int;
@@ -36,6 +36,7 @@ struct Expression {
         Lt,
         Ad,
         Or,
+        Nd
     };
 
     enum returnType {
@@ -47,7 +48,7 @@ struct Expression {
     struct Bool {
         returnType ans;
 
-        Bool() {
+        explicit Bool() {
             ans = Undefined;
         }
 
@@ -140,7 +141,7 @@ struct Expression {
     PropValFloat val_float;
     Bool val_bool;
 
-    Expression(): type(PropNone) {}
+    Expression(): type(PropNone), cmp_op(Nd), val_int(0), val_float(0) {}
 
     inline Expression assign(const PropValInt& propValInt) {
         type = PropInt;
@@ -155,13 +156,13 @@ struct Expression {
         return *this;
     }
 
-    inline Expression assignParameter(string& str) {
+    inline Expression assignParameter(const string& str) {
         type = PropParameter;
         name = str;
         return *this;
     }
 
-    inline Expression assign(string& str) {
+    inline Expression assign(const string& str) {
         type = PropString;
         val_string = str;
         return *this;
@@ -170,20 +171,6 @@ struct Expression {
     inline Expression assign(const char* str) {
         string s(str);
         return assign(s);
-    }
-
-    inline Expression assignEOp(const char& op) {
-        type = PropOp;
-        if(op == '=') {
-            cmp_op = Eq;
-        } else if(op == '>') {
-            cmp_op = Ge;
-        } else if(op == '<') {
-            cmp_op = Le;
-        } else {
-            assert(false);
-        }
-        return *this;
     }
 
     inline Expression assignBool() {
@@ -201,6 +188,20 @@ struct Expression {
     inline Expression assignBool(const Bool& b) {
         type = PropBool;
         val_bool = b;
+        return *this;
+    }
+
+    inline Expression assignEOp(const char& op) {
+        type = PropOp;
+        if(op == '=') {
+            cmp_op = Eq;
+        } else if(op == '>') {
+            cmp_op = Ge;
+        } else if(op == '<') {
+            cmp_op = Le;
+        } else {
+            assert(false);
+        }
         return *this;
     }
 
@@ -258,19 +259,19 @@ struct Expression {
     }
 
     template <typename T>
-    inline Expression CalcEq(T a, T b) {
+    inline Expression CalcEq(const T& a, const T& b) {
         assignBool(a == b);
         return *this;
     }
 
     template <typename T>
-    inline Expression CalcGe(T a, T b) {
+    inline Expression CalcGe(const T& a, const T& b) {
         assignBool(a >= b);
         return *this;
     }
 
     template <typename T>
-    inline Expression CalcGt(T a, T b) {
+    inline Expression CalcGt(const T& a, const T& b) {
         assignBool(a > b);
         return *this;
     }
@@ -320,7 +321,7 @@ struct Expression {
             return val_string;
         } else {
             //TODO
-            string s("datatype to string not supported");
+            string s("data type to string not supported");
             assert(printf("%s\n", s.c_str()) && false);
             return "";
         }
@@ -363,8 +364,6 @@ struct Expression {
             auto B = b.val_int;
             return Exec(A, B, op);
         }
-
-
     }
 };
 
@@ -391,7 +390,7 @@ struct Expressions : public vector<Expression> {
         std::cout << std::endl;
     }
 
-    int Prior(Expression e) {
+    int Prior(const Expression& e) {
         if(e.type != Expression::PropOp) {
             return 100;
         } else if(e.type == Expression::PropLeftBracket) {
@@ -452,6 +451,7 @@ struct Expressions : public vector<Expression> {
                     assert(false);
                 }
             } else if(g == '\'') {
+                // TODO: solve complex case
                 string ans;
                 i ++;
                 while((g = A[i ++]) != '\'') {
@@ -494,8 +494,6 @@ struct Expressions : public vector<Expression> {
         }
         print();
     }
-
-
 
     template <typename iterable>
     inline bool Matched(iterable props) {
