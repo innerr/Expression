@@ -3,18 +3,19 @@
 #include "expression.h"
 
 struct Dict {
+public:
     using Json = rapidjson::Document;
 
     Json &doc;
 
-    Dict(Json &doc_) : doc(doc_) {}
+    explicit Dict(Json &doc_) : doc(doc_) {}
 
     struct iterator {
         using It = rapidjson::Value::ConstMemberIterator;
 
         It it;
 
-        iterator(const It &it_) : it(it_) {}
+        explicit iterator(const It &it_) : it(it_) {}
 
         bool operator != (const iterator &x) {
             return it != x.it;
@@ -49,18 +50,18 @@ struct Dict {
         }
     };
 
-    iterator begin() const {
+    iterator begin() {
         return iterator(doc.MemberBegin());
     }
 
-    iterator end() const {
+    iterator end() {
         return iterator(doc.MemberEnd());
     }
 };
 
 int main() {
-    const char *expression = "(brand = 'Apple' & price > 6000) | (brand = 'HW' & price > 5000)";
-    const char *data = "{\"brand\": \"Apple\", \"price\": 8888.8.8}";
+    const char* expression = "(brand = 'Apple' & price > 6000) | (brand = 'HW' | price > 5000)";
+    const char *data = R"({"brand": "Apple", "price": 8888.8})";
 
     Expressions exp;
     exp.Parse(expression);
@@ -68,8 +69,10 @@ int main() {
     rapidjson::Document row;
     row.Parse(data);
 
-    bool matched = exp.Matched(*(Dict*)(&row));
-    std::cout << "{" << data << "} " << (matched ? "" : "not") << " matched {" << expression << "}" << std::endl;
+    Dict d(row);
+
+    bool matched = exp.Matched(d);
+    std::cout << "{" << data << "} " << (matched ? "" : "not ") << "matched {" << expression << "}" << std::endl;
 
     return 0;
 }
