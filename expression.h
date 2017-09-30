@@ -6,6 +6,8 @@
 #include <cmath>
 #include <cassert>
 #include <unordered_map>
+#include <cstring>
+#include <cassert>
 
 using std::string;
 using std::vector;
@@ -74,12 +76,10 @@ public:
         }
         std::cout << std::endl;
     }
-private:
     size_t N_LEN;
     size_t tail;
     T *content;
 };
-
 
 struct Expression {
     using PropValInt = int;
