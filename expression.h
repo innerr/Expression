@@ -1,8 +1,9 @@
-//#pragma once
+#pragma once
 
+#include <iostream>
 #include <string>
 #include <vector>
-#include <regex>
+#include <cmath>
 #include <cassert>
 #include <unordered_map>
 #include "stack.h"
@@ -12,6 +13,74 @@ using std::vector;
 
 const string ops[] = {"=", ">=", "<=", ">", "<", "&", "|"};
 const string bls[] = {"True", "False", "Undefined"};
+
+template<typename T>
+struct stack {
+public:
+    enum {
+        DEFAULT_INIT_SIZE = 256,
+    };
+
+    stack() : tail(0) {
+        N_LEN = DEFAULT_INIT_SIZE;
+        content = new T[N_LEN];
+    }
+
+    explicit stack(const size_t& len) : N_LEN(len), tail(0) {
+        content = new T[N_LEN];
+    }
+
+    ~stack() {
+        delete[] content;
+    }
+
+    inline size_t size() {
+        return tail;
+    }
+
+    inline bool empty() {
+        return !tail;
+    }
+
+    inline const T top() {
+        if(tail == 0) {
+            assert(false);
+            return T();
+        }
+        return content[tail - 1];
+    }
+
+    inline const T pop() {
+        if (tail == 0) {
+            assert(false);
+            return T();
+        }
+        return content[--tail];
+    }
+
+    inline void push(const T& x) {
+        if (tail == N_LEN) {
+            auto *tmp = new T[N_LEN << 1];
+            memcpy(content, tmp, sizeof(T) * N_LEN);
+            delete[] content;
+            content = tmp;
+            N_LEN <<= 1;
+        }
+        content[tail++] = x;
+    }
+
+    inline void print() {
+        for(int i = (int)tail - 1; i >= 0; i --) {
+            content[i].print();
+        }
+        std::cout << std::endl;
+    }
+private:
+    size_t N_LEN;
+    size_t tail;
+    T *content;
+};
+
 
 struct Expression {
     using PropValInt = int;
@@ -48,8 +117,8 @@ struct Expression {
     struct Bool {
         returnType ans;
 
-        explicit Bool() {
-            ans = Undefined;
+        explicit Bool(returnType x) {
+            ans = x;
         }
 
         explicit Bool(bool x) {
@@ -63,7 +132,7 @@ struct Expression {
         inline Bool operator && (const Bool& Rhs) const {
             if(ans == Undefined) {
                 if(Rhs.ans == Undefined) {
-                    return Bool();
+                    return Bool(Undefined);
                 } else {
                     return Rhs;
                 }
@@ -77,14 +146,14 @@ struct Expression {
         inline Bool operator || (const Bool& Rhs) const& {
             if(ans == Undefined) {
                 if(Rhs.ans == Undefined) {
-                    return Bool();
+                    return Bool(Undefined);
                 } else {
                     return Rhs;
                 }
             } else if(Rhs.ans == Undefined) {
                 return *this;
             } else {
-                return Bool(ans != Rhs.ans);
+                return Bool(ans == True || Rhs.ans == True);
             }
         }
 
@@ -141,7 +210,7 @@ struct Expression {
     PropValFloat val_float;
     Bool val_bool;
 
-    Expression(): type(PropNone), cmp_op(Nd), val_int(0), val_float(0) {}
+    Expression(): type(PropNone), cmp_op(Nd), val_int(0), val_float(0), val_bool(Undefined) {}
 
     inline Expression assign(const PropValInt& propValInt) {
         type = PropInt;
@@ -175,7 +244,7 @@ struct Expression {
 
     inline Expression assignBool() {
         type = PropBool;
-        val_bool = Bool();
+        val_bool = Bool(Undefined);
         return *this;
     }
 
@@ -241,7 +310,7 @@ struct Expression {
                 std::cout << "\'" << val_string << "\' ";
                 break;
             case PropBool:
-                std::cout << bls[val_bool.ans] << std::endl;
+                std::cout << bls[val_bool.ans] << " ";
                 break;
             case PropParameter:
                 std::cout << name << " ";
@@ -331,6 +400,21 @@ struct Expression {
         return val_float;
     }
 
+    inline Bool toBool() const {
+        if(type == PropBool) {
+            return val_bool;
+        } else if(type == PropString) {
+            return Bool(val_string.length() > 0);
+        } else if(type == PropFloat) {
+            return Bool(abs(val_float) > 0.0001);
+        } else if(type == PropInt) {
+            return Bool(val_int != 0);
+        } else {
+            assert(false);
+            return Bool(Undefined);
+        }
+    }
+
     template <class T>
     inline Expression Exec(const T& A, const T& B, const CmpOp& op) {
         switch(op) {
@@ -347,11 +431,10 @@ struct Expression {
 
     inline Expression Calc(const CmpOp& op, const Expression& b) {
         if(type == PropBool || b.type == PropBool) {
-            auto A = val_bool;
-            auto B = b.val_bool;
+            auto A = toBool();
+            auto B = b.toBool();
             return Exec(A, B, op);
-        }
-        if(type == PropString || b.type == PropString) {
+        } else if(type == PropString || b.type == PropString) {
             auto A = toString();
             auto B = b.toString();
             return Exec(A, B, op);
@@ -525,10 +608,10 @@ struct Expressions : public vector<Expression> {
             } else if(e.type == Expression::PropOp) {
                 Expression t1 = s.pop();
                 Expression t2 = s.pop();
-//                t2.print(); e.print(); t1.print();
+                t2.print(); e.print(); t1.print();
                 s.push(t2.Calc(e.cmp_op, t1));
-//                t2.Calc(e.cmp_op, t1).print();
-//                std::cout << std::endl;
+                t2.Calc(e.cmp_op, t1).print();
+                std::cout << std::endl;
             } else if(e.type == Expression::PropInt ||
                     e.type == Expression::PropFloat ||
                     e.type == Expression::PropString ||
@@ -538,6 +621,7 @@ struct Expressions : public vector<Expression> {
                 assert(false);
             }
         }
+        assert(s.size() == 1);
         return s.top().val_bool.ans != Expression::False;
     }
 

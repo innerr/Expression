@@ -72,7 +72,7 @@ int main() {
     Dict d(row);
 
     bool matched = exp.Matched(d);
-    std::cout << "{" << data << "} " << (matched ? "" : "not ") << "matched {" << expression << "}" << std::endl;
+    std::cout << data << " " << (matched ? "" : "not ") << "matched {" << expression << "}" << std::endl;
 
     return 0;
 }
