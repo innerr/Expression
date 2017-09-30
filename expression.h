@@ -6,7 +6,6 @@
 #include <cmath>
 #include <cassert>
 #include <unordered_map>
-#include "stack.h"
 
 using std::string;
 using std::vector;
