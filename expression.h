@@ -3,89 +3,19 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <cmath>
-#include <cassert>
 #include <unordered_map>
-#include <cstring>
-#include <cassert>
 
 using std::string;
 using std::vector;
-
-const string ops[] = {"=", ">=", "<=", ">", "<", "&", "|"};
-const string bls[] = {"True", "False", "Undefined"};
-
-template<typename T>
-struct stack {
-public:
-    enum {
-        DEFAULT_INIT_SIZE = 256,
-    };
-
-    stack() : tail(0) {
-        N_LEN = DEFAULT_INIT_SIZE;
-        content = new T[N_LEN];
-    }
-
-    explicit stack(const size_t& len) : N_LEN(len), tail(0) {
-        content = new T[N_LEN];
-    }
-
-    ~stack() {
-        delete[] content;
-    }
-
-    inline size_t size() {
-        return tail;
-    }
-
-    inline bool empty() {
-        return !tail;
-    }
-
-    inline const T top() {
-        if(tail == 0) {
-            assert(false);
-            return T();
-        }
-        return content[tail - 1];
-    }
-
-    inline const T pop() {
-        if (tail == 0) {
-            assert(false);
-            return T();
-        }
-        return content[--tail];
-    }
-
-    inline void push(const T& x) {
-        if (tail == N_LEN) {
-            auto *tmp = new T[N_LEN << 1];
-            memcpy(content, tmp, sizeof(T) * N_LEN);
-            delete[] content;
-            content = tmp;
-            N_LEN <<= 1;
-        }
-        content[tail++] = x;
-    }
-
-    inline void print() {
-        for(int i = (int)tail - 1; i >= 0; i --) {
-            content[i].print();
-        }
-        std::cout << std::endl;
-    }
-    size_t N_LEN;
-    size_t tail;
-    T *content;
-};
+using std::ostream;
+using std::unordered_map;
+using std::abs;
 
 struct Expression {
     using PropValInt = int;
     using PropValFloat = float;
 
-    enum PropType{
+    enum PropType {
         PropNone,
         PropString,
         PropInt,
@@ -96,360 +26,304 @@ struct Expression {
         PropLeftBracket
     };
 
-    enum CmpOp {
-        Eq,
-        Ge,
-        Le,
-        Gt,
-        Lt,
-        Ad,
-        Or,
-        Nd
-    };
+    enum CmpOp {Eq, Ge, Le, Gt, Lt, Or, And, Nd};
 
-    enum returnType {
-        True,
-        False,
-        Undefined,
+    enum ReturnType {
+        Undefined = -1,
+        False = 0,
+        True = 1,
     };
 
     struct Bool {
-        returnType ans;
+        ReturnType ans;
 
-        explicit Bool(returnType x) {
-            ans = x;
+        explicit Bool(ReturnType x) : ans(x) {}
+        explicit Bool(bool x) : ans(x ? True : False) {}
+
+        inline Bool operator && (const Bool &rhs) const {
+            if (ans == Undefined)
+                return (rhs.ans == Undefined) ? Bool(Undefined) : rhs;
+            return (rhs.ans == Undefined) ? *this : Bool(ans == True && rhs.ans == True);
         }
-
-        explicit Bool(bool x) {
-            if(x) {
-                ans = True;
-            } else {
-                ans = False;
-            }
+        inline Bool operator || (const Bool &rhs) const {
+            if (ans == Undefined)
+                return (rhs.ans == Undefined) ? Bool(Undefined) : rhs;
+            return (rhs.ans == Undefined) ? *this : Bool(ans == True || rhs.ans == True);
         }
-
-        inline Bool operator && (const Bool& Rhs) const {
-            if(ans == Undefined) {
-                if(Rhs.ans == Undefined) {
-                    return Bool(Undefined);
-                } else {
-                    return Rhs;
-                }
-            } else if(Rhs.ans == Undefined) {
-                return *this;
-            } else {
-                return Bool(ans == True && Rhs.ans == True);
-            }
+        inline Bool operator == (const Bool &rhs) const {
+            return (ans == Undefined || rhs.ans == Undefined) ? Bool(true) : Bool(ans == rhs.ans);
         }
-
-        inline Bool operator || (const Bool& Rhs) const& {
-            if(ans == Undefined) {
-                if(Rhs.ans == Undefined) {
-                    return Bool(Undefined);
-                } else {
-                    return Rhs;
-                }
-            } else if(Rhs.ans == Undefined) {
-                return *this;
-            } else {
-                return Bool(ans == True || Rhs.ans == True);
-            }
+        inline Bool operator >= (const Bool &rhs) const {
+            return (ans == Undefined || rhs.ans == Undefined) ? Bool(true) : Bool(ans >= rhs.ans);
         }
-
-        inline Bool operator == (const Bool& Rhs) const& {
-            if(ans == Undefined || Rhs.ans == Undefined) {
-                return Bool(true);
-            } else {
-                return Bool(ans == Rhs.ans);
-            }
+        inline Bool operator <= (const Bool &Rhs) const {
+            return (ans == Undefined || Rhs.ans == Undefined) ? Bool(true) : Bool(ans <= Rhs.ans);
         }
-
-        inline Bool operator >= (const Bool& Rhs) const& {
-            if(ans == Undefined || Rhs.ans == Undefined) {
-                return Bool(true);
-            } else {
-                return Bool(ans >= Rhs.ans);
-            }
+        inline Bool operator > (const Bool &Rhs) const {
+            return (ans == Undefined || Rhs.ans == Undefined) ? Bool(true) : Bool(ans > Rhs.ans);
         }
-
-        inline Bool operator <= (const Bool& Rhs) const& {
-            if(ans == Undefined || Rhs.ans == Undefined) {
-                return Bool(true);
-            } else {
-                return Bool(ans <= Rhs.ans);
-            }
+        inline Bool operator < (const Bool &Rhs) const {
+            return (ans == Undefined || Rhs.ans == Undefined) ? Bool(true) : Bool(ans < Rhs.ans);
         }
-
-        inline Bool operator > (const Bool& Rhs) const& {
-            if(ans == Undefined || Rhs.ans == Undefined) {
-                return Bool(true);
-            } else {
-                return Bool(ans > Rhs.ans);
-            }
-        }
-
-        inline Bool operator < (const Bool& Rhs) const& {
-            if(ans == Undefined || Rhs.ans == Undefined) {
-                return Bool(true);
-            } else {
-                return Bool(ans < Rhs.ans);
-            }
-        }
-
     };
 
     PropType type;
-
     CmpOp cmp_op;
-
     string name;
-    string val_string;
 
+    string val_string;
     PropValInt val_int;
     PropValFloat val_float;
     Bool val_bool;
 
-    Expression(): type(PropNone), cmp_op(Nd), val_int(0), val_float(0), val_bool(Undefined) {}
+    inline Expression(): type(PropNone), cmp_op(Nd), val_int(0), val_float(0), val_bool(Undefined) {}
 
-    inline Expression assign(const PropValInt& propValInt) {
+    inline Expression & Assign(const PropValInt &propValInt) {
         type = PropInt;
         val_int = propValInt;
         val_float = propValInt;
         return *this;
     }
-
-    inline Expression assign(const PropValFloat& propValFloat) {
+    inline Expression & Assign(const PropValFloat &propValFloat) {
         type = PropFloat;
         val_float = propValFloat;
         return *this;
     }
-
-    inline Expression assignParameter(const string& str) {
-        type = PropParameter;
-        name = str;
-        return *this;
-    }
-
-    inline Expression assign(const string& str) {
+    inline Expression & Assign(const string &str) {
         type = PropString;
         val_string = str;
         return *this;
     }
-
-    inline Expression assign(const char* str) {
-        string s(str);
-        return assign(s);
+    inline Expression & Assign(const char *str) {
+        return Assign(string(str));
     }
-
-    inline Expression assignBool() {
+    inline Expression & AssignBool() {
         type = PropBool;
         val_bool = Bool(Undefined);
         return *this;
     }
-
-    inline Expression assignBool(const bool& b) {
+    inline Expression & AssignBool(const bool &b) {
         type = PropBool;
         val_bool = Bool(b);
         return *this;
     }
-
-    inline Expression assignBool(const Bool& b) {
+    inline Expression & AssignBool(const Bool &b) {
         type = PropBool;
         val_bool = b;
         return *this;
     }
 
-    inline Expression assignEOp(const char& op) {
+    inline Expression & AssignParameter(const string &str) {
+        type = PropParameter;
+        name = str;
+        return *this;
+    }
+
+    inline Expression & AssignExpOp(const char &op) {
         type = PropOp;
-        if(op == '=') {
+        if (op == '=')
             cmp_op = Eq;
-        } else if(op == '>') {
+        else if (op == '>')
             cmp_op = Ge;
-        } else if(op == '<') {
+        else if (op == '<')
             cmp_op = Le;
-        } else {
+        else
             assert(false);
-        }
         return *this;
     }
 
-    inline Expression assignOp(const char& op) {
+    inline Expression & AssignOp(const char &op) {
         type = PropOp;
-        if(op == '=') {
+        if(op == '=')
             cmp_op = Eq;
-        } else if(op == '>') {
+        else if(op == '>')
             cmp_op = Gt;
-        } else if(op == '<') {
+        else if(op == '<')
             cmp_op = Lt;
-        } else if(op == '&') {
-            cmp_op = Ad;
-        } else if(op == '|') {
+        else if(op == '&')
+            cmp_op = And;
+        else if(op == '|')
             cmp_op = Or;
-
-        } else {
+        else
             assert(false);
-        }
         return *this;
     }
 
-    inline Expression lBracket() {
+    inline Expression LeftBracket() {
         type = PropLeftBracket;
         return *this;
     }
 
-    inline void print() {
-        switch(type) {
+    inline friend ostream & operator << (ostream &w, const Expression &exp) {
+        switch (exp.type) {
             case PropInt:
-                std::cout << val_int << " ";
-                break;
+                return w << exp.val_int << " ";
             case PropFloat:
-                std::cout << val_float << " ";
-                break;
+                return w << exp.val_float << " ";
             case PropString:
-                std::cout << "\'" << val_string << "\' ";
-                break;
+                return w << "\'" << exp.val_string << "\' ";
             case PropBool:
-                std::cout << bls[val_bool.ans] << " ";
-                break;
+                static const string bls[] = {"True", "False", "Undefined"};
+                return w << bls[exp.val_bool.ans] << " ";
             case PropParameter:
-                std::cout << name << " ";
-                break;
+                return w << exp.name << " ";
             case PropOp:
-                std::cout << ops[cmp_op] << " ";
-                break;
+                static const string ops[] = {"=", ">=", "<=", ">", "<", "&", "|"};
+                return w << ops[exp.cmp_op] << " ";
             case PropLeftBracket:
-                std::cout << '(' << " ";
-                break;
+                return w << '(' << " ";
             default:
-                std::cout << "??? ";
                 break;
         }
+        return w << "??? ";
     }
 
     template <typename T>
-    inline Expression CalcEq(const T& a, const T& b) {
-        assignBool(a == b);
-        return *this;
+    inline Expression & CalcEq(const T &a, const T &b) {
+        return AssignBool(a == b);
     }
-
     template <typename T>
-    inline Expression CalcGe(const T& a, const T& b) {
-        assignBool(a >= b);
-        return *this;
+    inline Expression & CalcGe(const T &a, const T &b) {
+        return AssignBool(a >= b);
     }
-
     template <typename T>
-    inline Expression CalcGt(const T& a, const T& b) {
-        assignBool(a > b);
-        return *this;
+    inline Expression & CalcGt(const T &a, const T &b) {
+        return AssignBool(a > b);
+    }
+    inline Expression & CalcAnd(const Bool &a, const Bool &b) {
+        return AssignBool(a && b);
+    }
+    inline Expression & CalcAnd(const string &a, const string &b) {
+        return AssignBool(a.length() && b.length());
+    }
+    inline Expression & CalcAnd(const float &a, const float &b) {
+        return AssignBool(abs(a) > 0.0001 && abs(b) > 0.0001);
+    }
+    inline Expression & CalcAnd(const int &a, const int &b) {
+        return AssignBool(a && b);
+    }
+    inline Expression & CalcOr(const Bool &a, const Bool &b) {
+        return AssignBool(a || b);
+    }
+    inline Expression & CalcOr(const string &a, const string &b) {
+        return AssignBool(a.length() || b.length());
+    }
+    inline Expression & CalcOr(const float &a, const float &b) {
+        return AssignBool(abs(a) > 0.0001 || abs(b) > 0.0001);
+    }
+    inline Expression & CalcOr(const int &a, const int &b) {
+        return AssignBool(a || b);
     }
 
-    inline Expression CalcAd(const Bool& a, const Bool& b) {
-        assignBool(a && b);
-        return *this;
+    inline string ToString() const {
+        assert(type == PropString);
+        return val_string;
     }
-
-    inline Expression CalcAd(const string& a, const string& b) {
-        assignBool(a.length() && b.length());
-        return *this;
-    }
-
-    inline Expression CalcAd(const float& a, const float& b) {
-        assignBool(std::abs(a) > 0.0001 && std::abs(b) > 0.0001);
-        return *this;
-    }
-
-    inline Expression CalcAd(const int& a, const int& b) {
-        assignBool(a && b);
-        return *this;
-    }
-
-    inline Expression CalcOr(const Bool& a, const Bool& b) {
-        assignBool(a || b);
-        return *this;
-    }
-
-    inline Expression CalcOr(const string& a, const string& b) {
-        assignBool(a.length() || b.length());
-        return *this;
-    }
-
-    inline Expression CalcOr(const float& a, const float& b) {
-        assignBool(std::abs(a) > 0.0001 || std::abs(b) > 0.0001);
-        return *this;
-    }
-
-    inline Expression CalcOr(const int& a, const int& b) {
-        assignBool(a || b);
-        return *this;
-    }
-
-    inline string toString() const {
-        if(type == PropString) {
-            return val_string;
-        } else {
-            //TODO
-            string s("data type to string not supported");
-            assert(printf("%s\n", s.c_str()) && false);
-            return "";
-        }
-    }
-
-    inline float toFloat() const {
+    inline float ToFloat() const {
         return val_float;
     }
-
-    inline Bool toBool() const {
-        if(type == PropBool) {
+    inline Bool ToBool() const {
+        if(type == PropBool)
             return val_bool;
-        } else if(type == PropString) {
+        if (type == PropString)
             return Bool(val_string.length() > 0);
-        } else if(type == PropFloat) {
+        if (type == PropFloat)
             return Bool(abs(val_float) > 0.0001);
-        } else if(type == PropInt) {
+        if (type == PropInt)
             return Bool(val_int != 0);
-        } else {
-            assert(false);
-            return Bool(Undefined);
-        }
+        assert(false);
+        return Bool(Undefined);
     }
 
     template <class T>
-    inline Expression Exec(const T& A, const T& B, const CmpOp& op) {
-        switch(op) {
-            case Eq: return CalcEq(A, B);
-            case Ge: return CalcGe(A, B);
-            case Le: return CalcGe(B, A);
-            case Gt: return CalcGt(A, B);
-            case Lt: return CalcGt(B, A);
-            case Ad: return CalcAd(A, B);
-            case Or: return CalcOr(A, B);
-            default: assert(false); return Expression();
+    inline Expression & Exec(const T &a, const T &b, const CmpOp &op) {
+        switch (op) {
+            case Eq:
+                return CalcEq(a, b);
+            case Ge:
+                return CalcGe(a, b);
+            case Le:
+                return CalcGe(b, a);
+            case Gt:
+                return CalcGt(a, b);
+            case Lt:
+                return CalcGt(b, a);
+            case Or:
+                return CalcOr(a, b);
+            case And:
+                return CalcAnd(a, b);
+            default:
+                assert(false);
         }
+        return *this;
     }
 
-    inline Expression Calc(const CmpOp& op, const Expression& b) {
-        if(type == PropBool || b.type == PropBool) {
-            auto A = toBool();
-            auto B = b.toBool();
-            return Exec(A, B, op);
-        } else if(type == PropString || b.type == PropString) {
-            auto A = toString();
-            auto B = b.toString();
-            return Exec(A, B, op);
-        } else if(type == PropFloat || b.type == PropFloat) {
-            auto A = toFloat();
-            auto B = b.toFloat();
-            return Exec(A, B, op);
-        } else {
-            auto A = val_int;
-            auto B = b.val_int;
-            return Exec(A, B, op);
-        }
+    inline Expression & Calc(const CmpOp &op, const Expression &rhs) {
+        if (type == PropBool || rhs.type == PropBool)
+            return Exec(ToBool(), rhs.ToBool(), op);
+        if (type == PropString || rhs.type == PropString)
+            return Exec(ToString(), rhs.ToString(), op);
+        if (type == PropFloat || rhs.type == PropFloat)
+            return Exec(ToFloat(), rhs.ToFloat(), op);
+        return Exec(val_int, rhs.val_int, op);
     }
 };
 
 struct Expressions : public vector<Expression> {
+    template<typename T>
+    class Stack {
+        size_t capacity;
+        // TODO: use pointer, not offset, can be faster.
+        size_t tail;
+        T *content;
+
+    public:
+        inline Stack(size_t capacity_ = 256) : tail(0), capacity(capacity_) {
+            content = new T[capacity];
+        }
+        inline ~Stack() {
+            delete[] content;
+        }
+
+        inline size_t Size() {
+            return tail;
+        }
+        inline bool Empty() {
+            return !tail;
+        }
+
+        inline const T Top() {
+            if(tail == 0) {
+                assert(false);
+                return T();
+            }
+            return content[tail - 1];
+        }
+        inline const T Pop() {
+            if (tail == 0) {
+                assert(false);
+                return T();
+            }
+            return content[--tail];
+        }
+        inline void Push(const T &x) {
+            if (tail == capacity) {
+                auto *tmp = new T[capacity << 1];
+                memcpy(content, tmp, sizeof(T) * capacity);
+                delete[] content;
+                content = tmp;
+                capacity <<= 1;
+            }
+            content[tail++] = x;
+        }
+
+        inline friend ostream & operator << (ostream &w, const Stack &x) {
+            for (int i = (int)(x.tail - 1); i >= 0; --i)
+                w << x.content[i];
+            return w;
+        }
+    };
+
     using Self = vector<Expression>;
 
     using CmpOp = Expression::CmpOp;
@@ -457,171 +331,153 @@ struct Expressions : public vector<Expression> {
     using PropValInt = Expression::PropValInt;
     using PropValFloat = Expression::PropValFloat;
 
-    inline bool isW(const char& s) {
-        return isalpha(s) || isdigit(s) || s == '_';
+    inline bool IsW(const char &c) {
+        return isalpha(c) || isdigit(c) || c == '_';
+    }
+    inline bool IsD(const char &c) {
+        return isdigit(c) || c == '.';
     }
 
-    inline bool isD(const char& s) {
-        return isdigit(s) || s == '.';
+    inline friend ostream & operator << (ostream &w, const Expressions &exps) {
+        for (const Expression &exp: exps)
+            w << exp;
+        return w;
     }
 
-    inline void print() {
-        for(Expression e: *this) {
-            e.print();
-        }
-        std::cout << std::endl;
-    }
-
-    int Prior(const Expression& e) {
-        if(e.type != Expression::PropOp) {
+    inline static int Prior(const Expression &exp) {
+        if (exp.type != Expression::PropOp)
             return 100;
-        } else if(e.type == Expression::PropLeftBracket) {
+        if (exp.type == Expression::PropLeftBracket)
             return 2;
-        } else if(e.cmp_op == Expression::Ad || e.cmp_op == Expression::Or) {
+        if (exp.cmp_op == Expression::And || exp.cmp_op == Expression::Or)
             return 0;
-        } else {
-            return 1;
-        }
+        return 1;
     }
 
-    inline void Parse(const char* A){
-        stack<Expression> s;
+    inline void Parse(const char *in){
         Self::clear();
-        char g;
-        auto len = (int) strlen(A);
-        for(int i = 0; i < len; ) {
-            g = A[i];
-            if(isblank(g)) {
-                i ++;
+        Stack<Expression> stack;
+        char g = 0;
+        auto len = (int)strlen(in);
+
+        for (int i = 0; i < len; ) {
+            g = in[i];
+            if (isblank(g)) {
+                ++i;
                 continue;
             }
             Expression ret;
-            if(isalpha(g)) {
+            if (isalpha(g)) {
                 string ans;
-                while(isW(g = A[i ++])) {
+                while (IsW(g = in[i++]))
                     ans += (char) tolower(g);
-                }
-                -- i;
-                Self::emplace_back(ret.assignParameter(ans));
-            } else if(isdigit(g) || g == '-') {
+                --i;
+                Self::emplace_back(ret.AssignParameter(ans));
+            } else if (isdigit(g) || g == '-') {
                 PropValInt ans = 0, fac = 1;
                 PropValFloat ansFloat = 0;
-                if(g == '-') {
+                if (g == '-') {
                     fac = -1;
-                    ++ i;
+                    ++i;
                 }
                 int cnt = 0;
                 float d = 1;
-                while(isD(g = A[i ++])) {
-                    if(g == '.') {
+                while (IsD(g = in[i ++])) {
+                    if (g == '.') {
                         ansFloat = ans;
-                        cnt ++;
+                        ++cnt;
                     }
-                    else if(cnt == 0) {
+                    else if (cnt == 0) {
                         ans = (ans << 3) + (ans << 1) + g - 48;
                     } else {
                         ansFloat += d * (g - 48);
                         d *= 0.1;
                     }
                 }
-                -- i;
-                if(cnt == 1) {
-                    Self::emplace_back(ret.assign(fac * ansFloat));
-                } else if(cnt == 0) {
-                    Self::emplace_back(ret.assign(fac * ans));
-                } else {
+                --i;
+                if (cnt == 1)
+                    Self::emplace_back(ret.Assign(fac * ansFloat));
+                else if (cnt == 0)
+                    Self::emplace_back(ret.Assign(fac * ans));
+                else
                     assert(false);
-                }
             } else if(g == '\'') {
                 // TODO: solve complex case
                 string ans;
-                i ++;
-                while((g = A[i ++]) != '\'') {
+                ++i;
+                while ((g = in[i ++]) != '\'')
                     ans += g;
-                }
-                Self::emplace_back(ret.assign(ans));
-            } else if(g == '(') {
-                i ++;
-                s.push(ret.lBracket());
-            } else if(g == ')') {
-                i ++;
-                while(!s.empty() && s.top().type != Expression::PropLeftBracket) {
-                    Self::emplace_back(s.pop());
-                }
-                s.pop();
-            } else if(g == '&' || g == '|') {
-                i ++;
-                while(!s.empty() && s.top().type != Expression::PropLeftBracket && Prior(s.top()) >= 0) {
-                    Self::emplace_back(s.pop());
-                }
-
-                s.push(ret.assignOp(g));
-            } else if(g == '=' || g == '<' || g == '>') {
-                while(!s.empty() && s.top().type != Expression::PropLeftBracket && Prior(s.top()) >= 1) {
-                    Self::emplace_back(s.pop());
-                }
-                i ++;
-                if(A[i] == '=') {
-                    i ++;
-                    s.push(ret.assignEOp(g));
+                Self::emplace_back(ret.Assign(ans));
+            } else if (g == '(') {
+                ++i;
+                stack.Push(ret.LeftBracket());
+            } else if (g == ')') {
+                ++i;
+                while(!stack.Empty() && stack.Top().type != Expression::PropLeftBracket)
+                    Self::emplace_back(stack.Pop());
+                stack.Pop();
+            } else if (g == '&' || g == '|') {
+                ++i;
+                // TODO: 'Expression::Prior(stack.Top()) >= 0' always true
+                while (!stack.Empty() && stack.Top().type != Expression::PropLeftBracket && Prior(stack.Top()) >= 0)
+                    Self::emplace_back(stack.Pop());
+                stack.Push(ret.AssignOp(g));
+            } else if (g == '=' || g == '<' || g == '>') {
+                while (!stack.Empty() && stack.Top().type != Expression::PropLeftBracket && Prior(stack.Top()) >= 1)
+                    Self::emplace_back(stack.Pop());
+                ++i;
+                if (in[i] == '=') {
+                    ++i;
+                    stack.Push(ret.AssignExpOp(g));
                 } else {
-                    s.push(ret.assignOp(g));
+                    stack.Push(ret.AssignOp(g));
                 }
             } else {
                 assert(false);
             }
         }
-        while(!s.empty()){
-            Self::emplace_back(s.pop());
-        }
-        print();
+
+        while (!stack.Empty())
+            Self::emplace_back(stack.Pop());
+        // std::cout << *this << std::endl;
     }
 
     template <typename iterable>
     inline bool Matched(iterable props) {
-        std::unordered_map<string, Expression> val;
-        Expression ex;
-        val.clear();
-        for(auto it = props.begin(); it != props.end(); ++ it) {
+        unordered_map<string, Expression> val;
+        // TODO: Assign => constructor
+        Expression exp;
+        for (auto it = props.begin(); it != props.end(); ++ it) {
             auto type = it->Type();
             string name(it->Name());
-            if(type == Expression::PropString) {
-                val.insert(make_pair(name, ex.assign(it->String())));
-            } else if(type == Expression::PropInt) {
-                val.insert(make_pair(name, ex.assign(it->Int())));
-            } else if(type == Expression::PropFloat) {
-                val.insert(make_pair(name, ex.assign((float)(it->Float()))));
-            } else {
+            if (type == Expression::PropString)
+                val.insert(make_pair(name, exp.Assign(it->String())));
+            else if (type == Expression::PropInt)
+                val.insert(make_pair(name, exp.Assign(it->Int())));
+            else if (type == Expression::PropFloat)
+                val.insert(make_pair(name, exp.Assign((float)(it->Float()))));
+            else
                 assert(false);
-            }
         }
-        stack<Expression> s;
-        while(!s.empty()) s.pop();
-        for(auto e: *this) {
-            if(e.type == Expression::PropParameter) {
-                if(val.find(e.name) == val.end()) {
-                    s.push(ex.assignBool());
-                } else {
-                    s.push(val[e.name]);
-                }
-            } else if(e.type == Expression::PropOp) {
-                Expression t1 = s.pop();
-                Expression t2 = s.pop();
-                t2.print(); e.print(); t1.print();
-                s.push(t2.Calc(e.cmp_op, t1));
-                t2.Calc(e.cmp_op, t1).print();
-                std::cout << std::endl;
-            } else if(e.type == Expression::PropInt ||
-                    e.type == Expression::PropFloat ||
-                    e.type == Expression::PropString ||
-                    e.type == Expression::PropBool) {
-                s.push(e);
-            } else {
-                assert(false);
-            }
-        }
-        assert(s.size() == 1);
-        return s.top().val_bool.ans != Expression::False;
-    }
 
+        Stack<Expression> stack;
+        for (auto &exp: *this) {
+            if (exp.type == Expression::PropParameter) {
+                stack.Push((val.find(exp.name) == val.end()) ? exp.AssignBool() : val[exp.name]);
+                continue;
+            }
+            if (exp.type != Expression::PropOp) {
+                stack.Push(exp);
+                continue;
+            }
+            Expression t1 = stack.Pop();
+            Expression t2 = stack.Pop();
+            // std::cerr << t2 << exp << t1;
+            stack.Push(t2.Calc(exp.cmp_op, t1));
+            // std::cerr << t2 << std::endl;
+        }
+
+        // assert(stack.Size() == 1);
+        return stack.Top().val_bool.ans != Expression::False;
+    }
 };
