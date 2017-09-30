@@ -37,8 +37,8 @@ struct Expression {
     struct Bool {
         ReturnType ans;
 
-        explicit Bool(ReturnType x) : ans(x) {}
-        explicit Bool(bool x) : ans(x ? True : False) {}
+        inline explicit Bool(ReturnType x) : ans(x) {}
+        inline explicit Bool(bool x) : ans(x ? True : False) {}
 
         inline Bool operator && (const Bool &rhs) const {
             if (ans == Undefined)
