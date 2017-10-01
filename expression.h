@@ -37,17 +37,17 @@ struct Expression {
     struct Bool {
         ReturnType ans;
 
-        inline explicit Bool(ReturnType x) : ans(x) {}
-        inline explicit Bool(bool x) : ans(x ? True : False) {}
+        inline explicit Bool(const ReturnType &x) : ans(x) {}
+        inline explicit Bool(const bool &x) : ans(x ? True : False) {}
 
         inline Bool operator && (const Bool &rhs) const {
             if (ans == Undefined)
-                return (rhs.ans == Undefined) ? *this : rhs;
+                return rhs;
             return (rhs.ans == Undefined) ? *this : Bool(ans == True && rhs.ans == True);
         }
         inline Bool operator || (const Bool &rhs) const {
             if (ans == Undefined)
-                return (rhs.ans == Undefined) ? *this : rhs;
+                return rhs;
             return (rhs.ans == Undefined) ? *this : Bool(ans == True || rhs.ans == True);
         }
         inline Bool operator == (const Bool &rhs) const {
@@ -202,22 +202,18 @@ struct Expression {
     inline Expression & CalcOr(const unsigned &a, const unsigned &b) {
         return AssignBool(a || b);
     }
-
-    inline unsigned ToString() const {
-//        assert(type == PropString);
-        return val_string;
-    }
     inline float ToFloat() const {
 //        assert(type == PropInt || type == PropFloat);
         return val_float;
-    }
-    inline Bool ToBool() const {
-        return val_bool;
     }
 
     template <class T>
     inline Expression & Exec(const T &a, const T &b, const CmpOp &op) {
         switch (op) {
+            case Or:
+                return CalcOr(a, b);
+            case And:
+                return CalcAnd(a, b);
             case Eq:
                 return CalcEq(a, b);
             case Ge:
@@ -228,10 +224,6 @@ struct Expression {
                 return CalcGt(a, b);
             case Lt:
                 return CalcGt(b, a);
-            case Or:
-                return CalcOr(a, b);
-            case And:
-                return CalcAnd(a, b);
             default:
                 assert(false);
         }
@@ -357,17 +349,6 @@ struct Expressions : public vector<Expression> {
             assert(false);
             return V();
         }
-
-        inline bool find(K &key) {
-            node *p = content[key & HASH_SIZE];
-            for (; p; p = p->next) {
-                if (p->key == key) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
         inline void insert(const K &key, const V &val) {
             node *p = content[key & HASH_SIZE];
             if (p == nullptr) {
