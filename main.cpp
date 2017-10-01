@@ -65,17 +65,18 @@ int main() {
     const char *data = R"({"brand": "Apple", "price": 8888.8})";
 
     Expressions exp;
-    Expressions::hashMap<const char*, Expression> val = exp.Parse(expression);
+    Expressions::hashMap<unsigned long, Expression> val = exp.Parse(expression);
+    std::cout << exp << std::endl;
 
     rapidjson::Document row;
     row.Parse(data);
 
     Dict d(row);
 
-
     time_t start = clock(), end;
 
-    int testCases = 1;
+    int testCases = 1000000;
+//    bool matched = false;
     for(int T = 0; T < testCases; T ++) {
         bool matched = exp.Matched(d, val);
         printf("%d\n", matched);
