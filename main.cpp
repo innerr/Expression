@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include "rapidjson/document.h"
 #include "expression.h"
 
@@ -64,15 +65,24 @@ int main() {
     const char *data = R"({"brand": "Apple", "price": 8888.8})";
 
     Expressions exp;
-    exp.Parse(expression);
+    Expressions::hashMap<const char*, Expression> val = exp.Parse(expression);
 
     rapidjson::Document row;
     row.Parse(data);
 
     Dict d(row);
 
-    bool matched = exp.Matched(d);
-    std::cout << data << " " << (matched ? "" : "not ") << "matched {" << expression << "}" << std::endl;
+
+    time_t start = clock(), end;
+
+    int testCases = 1;
+    for(int T = 0; T < testCases; T ++) {
+        bool matched = exp.Matched(d, val);
+        printf("%d\n", matched);
+    }
+
+    end = clock();
+    std::cerr << std::fixed << std::setprecision(3) << (end - start + 0.0) / CLOCKS_PER_SEC << "s " << std::endl;
 
     return 0;
 }
