@@ -282,7 +282,7 @@ struct Expressions : public vector<Expression> {
         T *content;
 
     public:
-        inline explicit Stack(size_t capacity_ = 256) : capacity(capacity_) {
+        inline explicit Stack(size_t capacity_ = 8) : capacity(capacity_) {
             content = new T[capacity];
             tail = content;
         }
@@ -309,7 +309,7 @@ struct Expressions : public vector<Expression> {
                 assert(false);
                 return T();
             }
-            return *(-- tail);
+            return *(--tail);
         }
         inline void Push(const T &x) {
             if (Size() == capacity) {
@@ -321,12 +321,12 @@ struct Expressions : public vector<Expression> {
                 capacity <<= 1;
             }
             *tail = x;
-            ++ tail;
+            ++tail;
         }
 
         inline friend ostream & operator << (ostream &w, Stack &x) {
             if (!x.Empty()) {
-                for (auto p = x.tail - 1; ; -- p) {
+                for (auto p = x.tail - 1; ; --p) {
                     w << *p << " ";
                     if (p == x.content) {
                         break;
@@ -397,7 +397,7 @@ struct Expressions : public vector<Expression> {
                 tail->val = val;
                 tail->next = nullptr;
                 content[key % HASH_SIZE] = tail;
-                ++ tail;
+                ++tail;
                 return;
             }
             node *prev = p;
@@ -413,12 +413,12 @@ struct Expressions : public vector<Expression> {
             tail->val = val;
             tail->next = nullptr;
             prev->next = tail;
-            ++ tail;
+            ++tail;
         }
 
         inline friend ostream & operator << (ostream &w, hashMap &x) {
             if (!x.Empty()) {
-                for (auto p = x.tail - 1; p != x.pool; -- p)
+                for (auto p = x.tail - 1; p != x.pool; --p)
                     w << "(" << p->key << ", " << p->val << ") ";
             }
             return w;
@@ -458,13 +458,13 @@ struct Expressions : public vector<Expression> {
 
     inline unsigned long hash(const char* s) {
         unsigned long ret = 0;
-        for (int i = 0; s[i]; i ++) {
+        for (int i = 0; s[i]; i++) {
             ret = ret * 1LL * 9987 + s[i];
         }
         return ret;
     }
 
-    inline hashMap<unsigned long, Expression> Parse(const char *in){
+    inline hashMap<unsigned long, Expression> Parse(const char *in) {
         Self::clear();
         Stack<Expression> stack;
         hashMap<unsigned long, Expression> dict;
@@ -474,18 +474,15 @@ struct Expressions : public vector<Expression> {
         for (int i = 0; i < len; ) {
             g = in[i];
             if (isblank(g)) {
-                ++ i;
+                ++i;
                 continue;
             }
             Expression ret;
             if (isalpha(g)) {
-                char ans[64];
-                int j = 0;
+                unsigned long hashcode = 0;
                 while (IsW(g = in[i++]))
-                    ans[j ++] = (char) tolower(g);
-                ans[j] = 0;
-                -- i;
-                unsigned long hashcode = hash(ans);
+                    hashcode = hashcode * 9987L + tolower(g);
+                --i;
                 dict.insert(hashcode, ret.AssignBool());
                 Self::emplace_back(ret.AssignParameter(hashcode));
             } else if (isdigit(g) || g == '-') {
@@ -497,7 +494,7 @@ struct Expressions : public vector<Expression> {
                 }
                 int cnt = 0;
                 float d = 1;
-                while (IsD(g = in[i ++])) {
+                while (IsD(g = in[i++])) {
                     if (g == '.') {
                         ansFloat = ans;
                         ++cnt;
@@ -509,7 +506,7 @@ struct Expressions : public vector<Expression> {
                         d *= 0.1;
                     }
                 }
-                -- i;
+                --i;
                 if (cnt == 1)
                     Self::emplace_back(ret.Assign(fac * ansFloat));
                 else if (cnt == 0)
@@ -518,13 +515,12 @@ struct Expressions : public vector<Expression> {
                     assert(false);
             } else if (g == '\'') {
                 // TODO: solve complex case
-                char ans[64];
-                ++ i;
+                ++i;
                 int j = 0;
-                while ((g = in[i ++]) != '\'')
-                    ans[j ++] = g;
-                ans[j] = 0;
-                Self::emplace_back(ret.Assign(hash(ans)));
+                unsigned long hashcode = 0;
+                while ((g = in[i++]) != '\'')
+                    hashcode = hashcode * 9987L + g;
+                Self::emplace_back(ret.Assign(hashcode));
             } else if (g == '(') {
                 ++i;
                 stack.Push(ret.LeftBracket());
@@ -562,25 +558,23 @@ struct Expressions : public vector<Expression> {
     inline bool Matched(iterable props, hashMap<unsigned long, Expression> val) {
         // TODO: Assign => constructor
         Expression exp;
-        for (auto it = props.begin(); it != props.end(); ++ it) {
+        for (auto it = props.begin(); it != props.end(); ++it) {
             auto type = it->Type();
             auto len = strlen(it->Name());
-            char ans[64];
-            for (int i = 0; i < len; i ++) {
-                ans[i] = it->Name()[i];
+            unsigned long hashcode = 0;
+            for (int i = 0; i < len; i++) {
+                hashcode = hashcode * 9987L + it->Name()[i];
             }
-            ans[len] = 0;
-            unsigned long hashcode = hash(ans);
             if (!val.find(hashcode)) {
                 continue;
             }
             if (type == Expression::PropString) {
                 len = strlen(it->String());
-                for (int i = 0; i < len; i ++) {
-                    ans[i] = it->String()[i];
+                hashcode = 0;
+                for (int i = 0; i < len; i++) {
+                    hashcode = hashcode * 9987L + it->String()[i];
                 }
-                ans[len] = 0;
-                val.insert(hashcode, exp.Assign(hash(ans)));
+                val.insert(hashcode, exp.Assign(hashcode));
             } else if (type == Expression::PropInt) {
                 val.insert(hashcode, exp.Assign(it->Int()));
             } else if (type == Expression::PropFloat) {
