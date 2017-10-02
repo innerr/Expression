@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-//#define dump(x) std::cout << (#x) << ": " << x << '\n'
 
 using std::vector;
 using std::ostream;
@@ -76,7 +75,8 @@ struct Expression {
     PropValFloat val_float;
     Bool val_bool;
 
-    inline Expression(): type(PropBool), val_bool(Undefined) {}//: type(PropNone), cmp_op(Nd), val_int(0), val_float(0), val_bool(Undefined), name(0), val_string(0) {}
+    inline Expression(): type(PropBool), val_bool(Undefined) {}
+    //: type(PropNone), cmp_op(Nd), val_int(0), val_float(0), val_bool(Undefined), name(0), val_string(0) {}
 
     inline Expression & Assign(const PropValInt &propValInt) {
         type = PropInt;
@@ -203,7 +203,7 @@ struct Expression {
         return AssignBool(a || b);
     }
     inline float ToFloat() const {
-//        assert(type == PropInt || type == PropFloat);
+        // assert(type == PropInt || type == PropFloat);
         return val_float;
     }
 
@@ -309,6 +309,10 @@ struct Expressions : public vector<Expression> {
 
     template<typename K, typename V>
     class hashMap {
+        enum {
+            HASH_SIZE = 31,
+        };
+
         size_t capacity;
         struct node {
             K key;
@@ -318,7 +322,6 @@ struct Expressions : public vector<Expression> {
             node(const K &key_, const V &val_): key(key_), val(val_), next(nullptr) {}
         };
         node *tail;
-#define HASH_SIZE 31
         node *content[HASH_SIZE];
         node *pool;
 
@@ -338,7 +341,7 @@ struct Expressions : public vector<Expression> {
             return tail == pool;
         }
 
-        //please ensure that you used find first
+        // Please ensure that you used find first
         inline V get(const K &key) {
             node *p = content[key & HASH_SIZE];
             for (; p; p = p->next) {
@@ -399,9 +402,8 @@ struct Expressions : public vector<Expression> {
     }
 
     inline friend ostream & operator << (ostream &w, const Expressions &exps) {
-        for (const Expression &exp: exps) {
+        for (const Expression &exp: exps)
             w << exp << " ";
-        }
         return w;
     }
 
@@ -530,23 +532,25 @@ struct Expressions : public vector<Expression> {
                 assert(false);
             }
         }
-//        return true;
+
+        // return true;
+
         Stack<Expression> stack;
-        for (const auto &e: *this) {
-            if (e.type == Expression::PropParameter) {
-                stack.Push(val.get(e.name));
-            } else if (e.type != Expression::PropOp) {
-                stack.Push(e);
+        for (const auto &exp: *this) {
+            if (exp.type == Expression::PropParameter) {
+                stack.Push(val.get(exp.name));
+            } else if (exp.type != Expression::PropOp) {
+                stack.Push(exp);
             } else {
                 Expression t1 = stack.Pop();
                 Expression t2 = stack.Pop();
-//                 std::cout << t2 << e << t1 << "??" << std::endl;
-                stack.Push(t2.Calc(e.cmp_op, t1));
-//                 std::cout << t2.Calc(e.cmp_op, t1) << std::endl;
+                // std::cout << t2 << e << t1 << "??" << std::endl;
+                stack.Push(t2.Calc(exp.cmp_op, t1));
+                // std::cout << t2.Calc(e.cmp_op, t1) << std::endl;
             }
         }
 
-//         assert(stack.Size() == 1);
+        // assert(stack.Size() == 1);
         return stack.Top().val_bool.ans != Expression::False;
     }
 };
