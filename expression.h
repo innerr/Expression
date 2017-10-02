@@ -37,46 +37,46 @@ struct Expression {
     struct Bool {
         ReturnType ans;
 
-        inline explicit Bool(ReturnType x) : ans(x) {}
-        inline explicit Bool(bool x) : ans(x ? True : False) {}
+        inline explicit Bool(const ReturnType &x) : ans(x) {}
+        inline explicit Bool(const bool &x) : ans(x ? True : False) {}
 
         inline Bool operator && (const Bool &rhs) const {
             if (ans == Undefined)
-                return (rhs.ans == Undefined) ? Bool(Undefined) : rhs;
+                return rhs;
             return (rhs.ans == Undefined) ? *this : Bool(ans == True && rhs.ans == True);
         }
         inline Bool operator || (const Bool &rhs) const {
             if (ans == Undefined)
-                return (rhs.ans == Undefined) ? Bool(Undefined) : rhs;
+                return rhs;
             return (rhs.ans == Undefined) ? *this : Bool(ans == True || rhs.ans == True);
         }
         inline Bool operator == (const Bool &rhs) const {
-            return (ans == Undefined || rhs.ans == Undefined) ? Bool(true) : Bool(ans == rhs.ans);
+            return (ans == Undefined || rhs.ans == Undefined) ? Bool(True) : Bool(ans == rhs.ans);
         }
         inline Bool operator >= (const Bool &rhs) const {
-            return (ans == Undefined || rhs.ans == Undefined) ? Bool(true) : Bool(ans >= rhs.ans);
+            return (ans == Undefined || rhs.ans == Undefined) ? Bool(True) : Bool(ans >= rhs.ans);
         }
         inline Bool operator <= (const Bool &Rhs) const {
-            return (ans == Undefined || Rhs.ans == Undefined) ? Bool(true) : Bool(ans <= Rhs.ans);
+            return (ans == Undefined || Rhs.ans == Undefined) ? Bool(True) : Bool(ans <= Rhs.ans);
         }
         inline Bool operator > (const Bool &Rhs) const {
-            return (ans == Undefined || Rhs.ans == Undefined) ? Bool(true) : Bool(ans > Rhs.ans);
+            return (ans == Undefined || Rhs.ans == Undefined) ? Bool(True) : Bool(ans > Rhs.ans);
         }
         inline Bool operator < (const Bool &Rhs) const {
-            return (ans == Undefined || Rhs.ans == Undefined) ? Bool(true) : Bool(ans < Rhs.ans);
+            return (ans == Undefined || Rhs.ans == Undefined) ? Bool(True) : Bool(ans < Rhs.ans);
         }
     };
 
     PropType type;
     CmpOp cmp_op;
-    unsigned long name;
+    unsigned name;
 
-    unsigned long val_string;
+    unsigned val_string;
     PropValInt val_int;
     PropValFloat val_float;
     Bool val_bool;
 
-    inline Expression(): type(PropNone), cmp_op(Nd), val_int(0), val_float(0), val_bool(Undefined), name(0), val_string(0) {}
+    inline Expression(): type(PropBool), val_bool(Undefined) {}//: type(PropNone), cmp_op(Nd), val_int(0), val_float(0), val_bool(Undefined), name(0), val_string(0) {}
 
     inline Expression & Assign(const PropValInt &propValInt) {
         type = PropInt;
@@ -89,8 +89,7 @@ struct Expression {
         val_float = propValFloat;
         return *this;
     }
-    inline Expression & Assign(const unsigned long hashcode) {
-
+    inline Expression & Assign(const unsigned& hashcode) {
         type = PropString;
         val_string = hashcode;
         return *this;
@@ -111,7 +110,7 @@ struct Expression {
         return *this;
     }
 
-    inline Expression & AssignParameter(unsigned long hashcode) {
+    inline Expression & AssignParameter(const unsigned &hashcode) {
         type = PropParameter;
         name = hashcode;
         return *this;
@@ -119,12 +118,12 @@ struct Expression {
 
     inline Expression & AssignExpOp(const char &op) {
         type = PropOp;
-        if (op == '=')
-            cmp_op = Eq;
-        else if (op == '>')
+        if (op == '>')
             cmp_op = Ge;
         else if (op == '<')
             cmp_op = Le;
+        else if (op == '=')
+            cmp_op = Eq;
         else
             assert(false);
         return *this;
@@ -132,16 +131,16 @@ struct Expression {
 
     inline Expression & AssignOp(const char &op) {
         type = PropOp;
-        if (op == '=')
+        if (op == '&')
+            cmp_op = And;
+        else if (op == '|')
+            cmp_op = Or;
+        else if (op == '=')
             cmp_op = Eq;
         else if (op == '>')
             cmp_op = Gt;
         else if (op == '<')
             cmp_op = Lt;
-        else if (op == '&')
-            cmp_op = And;
-        else if (op == '|')
-            cmp_op = Or;
         else
             assert(false);
         return *this;
@@ -194,53 +193,27 @@ struct Expression {
     inline Expression & CalcAnd(const Bool &a, const Bool &b) {
         return AssignBool(a && b);
     }
-    inline Expression & CalcAnd(const unsigned long &a, const unsigned long &b) {
-        return AssignBool(a && b);
-    }
-    inline Expression & CalcAnd(const float &a, const float &b) {
-        return AssignBool(abs(a) > 0.0001 && abs(b) > 0.0001);
-    }
-    inline Expression & CalcAnd(const int &a, const int &b) {
+    inline Expression & CalcAnd(const unsigned &a, const unsigned &b) {
         return AssignBool(a && b);
     }
     inline Expression & CalcOr(const Bool &a, const Bool &b) {
         return AssignBool(a || b);
     }
-    inline Expression & CalcOr(const unsigned long &a, const unsigned long &b) {
+    inline Expression & CalcOr(const unsigned &a, const unsigned &b) {
         return AssignBool(a || b);
-    }
-    inline Expression & CalcOr(const float &a, const float &b) {
-        return AssignBool(abs(a) > 0.0001 || abs(b) > 0.0001);
-    }
-    inline Expression & CalcOr(const int &a, const int &b) {
-        return AssignBool(a || b);
-    }
-
-    inline unsigned long ToString() const {
-
-        assert(type == PropString);
-        return val_string;
     }
     inline float ToFloat() const {
-        assert(type == PropInt || type == PropFloat);
+//        assert(type == PropInt || type == PropFloat);
         return val_float;
-    }
-    inline Bool ToBool() const {
-        if (type == PropBool)
-            return val_bool;
-        if (type == PropString)
-            return Bool(val_string > 0);
-        if (type == PropFloat)
-            return Bool(abs(val_float) > 0.0001);
-        if (type == PropInt)
-            return Bool(val_int != 0);
-        assert(false);
-        return Bool(Undefined);
     }
 
     template <class T>
     inline Expression & Exec(const T &a, const T &b, const CmpOp &op) {
         switch (op) {
+            case Or:
+                return CalcOr(a, b);
+            case And:
+                return CalcAnd(a, b);
             case Eq:
                 return CalcEq(a, b);
             case Ge:
@@ -251,10 +224,6 @@ struct Expression {
                 return CalcGt(a, b);
             case Lt:
                 return CalcGt(b, a);
-            case Or:
-                return CalcOr(a, b);
-            case And:
-                return CalcAnd(a, b);
             default:
                 assert(false);
         }
@@ -262,13 +231,14 @@ struct Expression {
     }
 
     inline Expression & Calc(const CmpOp &op, const Expression &rhs) {
-
-        if (type == PropBool || rhs.type == PropBool)
-            return Exec(ToBool(), rhs.ToBool(), op);
-        if (type == PropString || rhs.type == PropString)
-            return Exec(ToString(), rhs.ToString(), op);
-        if (type == PropFloat || rhs.type == PropFloat)
-            return Exec(ToFloat(), rhs.ToFloat(), op);
+        if (type == PropBool)
+            return Exec(val_bool, rhs.val_bool, op);
+        if (type == PropString)
+            return Exec(val_string, rhs.val_string, op);
+        if (type == PropFloat)
+            return Exec(val_float, rhs.ToFloat(), op);
+        if (rhs.type == PropFloat)
+            return Exec(ToFloat(), rhs.val_float, op);
         return Exec(val_int, rhs.val_int, op);
     }
 };
@@ -282,7 +252,7 @@ struct Expressions : public vector<Expression> {
         T *content;
 
     public:
-        inline explicit Stack(size_t capacity_ = 8) : capacity(capacity_) {
+        inline explicit Stack(size_t capacity_ = 4) : capacity(capacity_) {
             content = new T[capacity];
             tail = content;
         }
@@ -348,14 +318,14 @@ struct Expressions : public vector<Expression> {
             node(const K &key_, const V &val_): key(key_), val(val_), next(nullptr) {}
         };
         node *tail;
-#define HASH_SIZE 23
+#define HASH_SIZE 31
         node *content[HASH_SIZE];
         node *pool;
 
     public:
-        inline explicit hashMap(size_t capacity_ = 64) : capacity(capacity_) {
+        inline explicit hashMap(size_t capacity_ = 8) : capacity(capacity_) {
             pool = new node[capacity];
-            for (auto &g: content) {
+            for (node* &g: content) {
                 g = nullptr;
             }
             tail = pool;
@@ -370,7 +340,7 @@ struct Expressions : public vector<Expression> {
 
         //please ensure that you used find first
         inline V get(const K &key) {
-            node *p = content[key % HASH_SIZE];
+            node *p = content[key & HASH_SIZE];
             for (; p; p = p->next) {
                 if (p->key == key) {
                     return p->val;
@@ -379,24 +349,13 @@ struct Expressions : public vector<Expression> {
             assert(false);
             return V();
         }
-
-        inline bool find(K &key) {
-            node *p = content[key % HASH_SIZE];
-            for (; p; p = p->next) {
-                if (p->key == key) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
         inline void insert(const K &key, const V &val) {
-            node *p = content[key % HASH_SIZE];
+            node *p = content[key & HASH_SIZE];
             if (p == nullptr) {
                 tail->key = key;
                 tail->val = val;
                 tail->next = nullptr;
-                content[key % HASH_SIZE] = tail;
+                content[key & HASH_SIZE] = tail;
                 ++tail;
                 return;
             }
@@ -456,21 +415,12 @@ struct Expressions : public vector<Expression> {
         return 1;
     }
 
-    inline unsigned long hash(const char* s) {
-        unsigned long ret = 0;
-        for (int i = 0; s[i]; i++) {
-            ret = ret * 1LL * 9987 + s[i];
-        }
-        return ret;
-    }
-
-    inline hashMap<unsigned long, Expression> Parse(const char *in) {
+    inline hashMap<unsigned, Expression> Parse(const char *in) {
         Self::clear();
         Stack<Expression> stack;
-        hashMap<unsigned long, Expression> dict;
+        hashMap<unsigned, Expression> dict;
         char g = 0;
         auto len = (int)strlen(in);
-
         for (int i = 0; i < len; ) {
             g = in[i];
             if (isblank(g)) {
@@ -479,10 +429,9 @@ struct Expressions : public vector<Expression> {
             }
             Expression ret;
             if (isalpha(g)) {
-                unsigned long hashcode = 0;
-                while (IsW(g = in[i++]))
-                    hashcode = hashcode * 9987L + tolower(g);
-                --i;
+                unsigned hashcode = 0;
+                while (IsW(in[i]))
+                    hashcode = hashcode * 131U + in[i ++];
                 dict.insert(hashcode, ret.AssignBool());
                 Self::emplace_back(ret.AssignParameter(hashcode));
             } else if (isdigit(g) || g == '-') {
@@ -494,21 +443,20 @@ struct Expressions : public vector<Expression> {
                 }
                 int cnt = 0;
                 float d = 1;
-                while (IsD(g = in[i++])) {
+                while (IsD(g = in[i])) {
                     if (g == '.') {
                         ansFloat = ans;
                         ++cnt;
-                    }
-                    else if (cnt == 0) {
+                    } else if (cnt == 0) {
                         ans = ans * 10 + g - 48;
                     } else {
-                        ansFloat += d * (g - 48);
+                        ansFloat = ansFloat * 10 + (g - 48);
                         d *= 0.1;
                     }
+                    ++i;
                 }
-                --i;
                 if (cnt == 1)
-                    Self::emplace_back(ret.Assign(fac * ansFloat));
+                    Self::emplace_back(ret.Assign(fac * ansFloat * d));
                 else if (cnt == 0)
                     Self::emplace_back(ret.Assign(fac * ans));
                 else
@@ -517,9 +465,9 @@ struct Expressions : public vector<Expression> {
                 // TODO: solve complex case
                 ++i;
                 int j = 0;
-                unsigned long hashcode = 0;
+                unsigned hashcode = 0;
                 while ((g = in[i++]) != '\'')
-                    hashcode = hashcode * 9987L + g;
+                    hashcode = hashcode * 131U + g;
                 Self::emplace_back(ret.Assign(hashcode));
             } else if (g == '(') {
                 ++i;
@@ -555,26 +503,25 @@ struct Expressions : public vector<Expression> {
     }
 
     template <typename iterable>
-    inline bool Matched(iterable props, hashMap<unsigned long, Expression> val) {
+    inline bool Matched(iterable& props, hashMap<unsigned, Expression> val) {
         // TODO: Assign => constructor
         Expression exp;
         for (auto it = props.begin(); it != props.end(); ++it) {
             auto type = it->Type();
-            auto len = strlen(it->Name());
-            unsigned long hashcode = 0;
-            for (int i = 0; i < len; i++) {
-                hashcode = hashcode * 9987L + it->Name()[i];
-            }
-            if (!val.find(hashcode)) {
-                continue;
+            unsigned hashcode = 0;
+            const char *p = it->Name();
+            int len = it->NameLength();
+            for (int i = 0; i < len; ++i) {
+                hashcode = hashcode * 131U + *(p + i);
             }
             if (type == Expression::PropString) {
-                len = strlen(it->String());
-                hashcode = 0;
-                for (int i = 0; i < len; i++) {
-                    hashcode = hashcode * 9987L + it->String()[i];
+                unsigned hashcode2 = 0;
+                const char *q = it->String();
+                len = it->StringLength();
+                for (int i = 0; i < len; ++i) {
+                    hashcode2 = hashcode2 * 131U + *(q + i);
                 }
-                val.insert(hashcode, exp.Assign(hashcode));
+                val.insert(hashcode, exp.Assign(hashcode2));
             } else if (type == Expression::PropInt) {
                 val.insert(hashcode, exp.Assign(it->Int()));
             } else if (type == Expression::PropFloat) {
@@ -585,7 +532,7 @@ struct Expressions : public vector<Expression> {
         }
 //        return true;
         Stack<Expression> stack;
-        for (auto &e: *this) {
+        for (const auto &e: *this) {
             if (e.type == Expression::PropParameter) {
                 stack.Push(val.get(e.name));
             } else if (e.type != Expression::PropOp) {

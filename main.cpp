@@ -40,8 +40,14 @@ public:
         const char * Name() {
             return it->name.GetString();
         }
+        size_t NameLength() {
+            return it->name.GetStringLength();
+        }
         const char * String() {
             return it->value.GetString();
+        }
+        size_t StringLength() {
+            return it->value.GetStringLength();
         }
         Expression::PropValInt Int() {
             return (Expression::PropValInt)it->value.GetInt();
@@ -61,11 +67,11 @@ public:
 };
 
 int main() {
-    const char* expression = "(brand = 'Apple' & price > 6000) | (brand = 'HW' | price > 5000)";
-    const char *data = R"({"brand": "Apple", "price": 8888.8})";
+    const char* expression = "(brand = 'Apple' & price > 6000) | (brand = 'HW' & price > 5000)";
+    const char *data = R"({"brand": "Apple", "price": 5888.8})";
 
     Expressions exp;
-    Expressions::hashMap<unsigned long, Expression> val = exp.Parse(expression);
+    Expressions::hashMap<unsigned, Expression> val = exp.Parse(expression);
     std::cout << exp << std::endl;
 
     rapidjson::Document row;
