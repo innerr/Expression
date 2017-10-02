@@ -308,7 +308,7 @@ struct Expressions : public vector<Expression> {
     };
 
     template<typename K, typename V>
-    class hashMap {
+    class HashMap {
         enum {
             HASH_SIZE = 31,
         };
@@ -326,7 +326,7 @@ struct Expressions : public vector<Expression> {
         node *pool;
 
     public:
-        inline explicit hashMap(size_t capacity_ = 8) : capacity(capacity_) {
+        inline explicit HashMap(size_t capacity_ = 8) : capacity(capacity_) {
             pool = new node[capacity];
             for (node* &g: content) {
                 g = nullptr;
@@ -378,7 +378,7 @@ struct Expressions : public vector<Expression> {
             ++tail;
         }
 
-        inline friend ostream & operator << (ostream &w, hashMap &x) {
+        inline friend ostream & operator << (ostream &w, HashMap &x) {
             if (!x.Empty()) {
                 for (auto p = x.tail - 1; p != x.pool; --p)
                     w << "(" << p->key << ", " << p->val << ") ";
@@ -417,10 +417,9 @@ struct Expressions : public vector<Expression> {
         return 1;
     }
 
-    inline hashMap<unsigned, Expression> Parse(const char *in) {
+    inline void Parse(const char *in) {
         Self::clear();
         Stack<Expression> stack;
-        hashMap<unsigned, Expression> dict;
         char g = 0;
         auto len = (int)strlen(in);
         for (int i = 0; i < len; ) {
@@ -501,44 +500,39 @@ struct Expressions : public vector<Expression> {
 
         while (!stack.Empty())
             Self::emplace_back(stack.Pop());
-        return dict;
     }
 
     template <typename iterable>
-    inline bool Matched(iterable& props, hashMap<unsigned, Expression> val) {
+    inline bool Match(iterable& props) {
         // TODO: Assign => constructor
         Expression exp;
         for (auto it = props.begin(); it != props.end(); ++it) {
             auto type = it->Type();
             unsigned hashcode = 0;
             const char *p = it->Name();
-            int len = it->NameLength();
-            for (int i = 0; i < len; ++i) {
+            int len = it->NameLen();
+            for (int i = 0; i < len; ++i)
                 hashcode = hashcode * 131U + *(p + i);
-            }
             if (type == Expression::PropString) {
                 unsigned hashcode2 = 0;
                 const char *q = it->String();
-                len = it->StringLength();
-                for (int i = 0; i < len; ++i) {
+                len = it->ValLen();
+                for (int i = 0; i < len; ++i)
                     hashcode2 = hashcode2 * 131U + *(q + i);
-                }
-                val.insert(hashcode, exp.Assign(hashcode2));
+                dict.insert(hashcode, exp.Assign(hashcode2));
             } else if (type == Expression::PropInt) {
-                val.insert(hashcode, exp.Assign(it->Int()));
+                dict.insert(hashcode, exp.Assign(it->Int()));
             } else if (type == Expression::PropFloat) {
-                val.insert(hashcode, exp.Assign(it->Float()));
+                dict.insert(hashcode, exp.Assign(it->Float()));
             } else {
                 assert(false);
             }
         }
 
-        // return true;
-
         Stack<Expression> stack;
         for (const auto &exp: *this) {
             if (exp.type == Expression::PropParameter) {
-                stack.Push(val.get(exp.name));
+                stack.Push(dict.get(exp.name));
             } else if (exp.type != Expression::PropOp) {
                 stack.Push(exp);
             } else {
@@ -553,4 +547,7 @@ struct Expressions : public vector<Expression> {
         // assert(stack.Size() == 1);
         return stack.Top().val_bool.ans != Expression::False;
     }
+
+private:
+    HashMap<unsigned, Expression> dict;
 };

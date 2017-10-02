@@ -40,13 +40,13 @@ public:
         const char * Name() {
             return it->name.GetString();
         }
-        size_t NameLength() {
+        size_t NameLen() {
             return it->name.GetStringLength();
         }
         const char * String() {
             return it->value.GetString();
         }
-        size_t StringLength() {
+        size_t ValLen() {
             return it->value.GetStringLength();
         }
         Expression::PropValInt Int() {
@@ -71,7 +71,7 @@ int main() {
     const char *data = R"({"brand": "Apple", "price": 5888.8})";
 
     Expressions exp;
-    Expressions::hashMap<unsigned, Expression> val = exp.Parse(expression);
+    exp.Parse(expression);
     std::cout << exp << std::endl;
 
     rapidjson::Document row;
@@ -82,10 +82,9 @@ int main() {
     time_t start = clock(), end;
 
     int testCases = 1000000;
-//    bool matched = false;
     for(int T = 0; T < testCases; T ++) {
-        bool matched = exp.Matched(d, val);
-        printf("%d\n", matched);
+        bool matched = exp.Match(d);
+        std::cout << matched << std::endl;
     }
 
     end = clock();
