@@ -16,18 +16,18 @@ public:
 
         It it;
 
-        explicit iterator(const It &it_) : it(it_) {}
+        inline explicit iterator(const It &it_) : it(it_) {}
 
-        bool operator != (const iterator &x) {
+        inline bool operator != (const iterator &x) {
             return it != x.it;
         }
-        void operator ++ () {
+        inline void operator ++ () {
             ++it;
         }
-        iterator* operator -> () {
+        inline iterator* operator -> () {
             return this;
         }
-        Expression::PropType Type() {
+        inline Expression::PropType Type() {
             auto type = it->value.GetType();
             if (type == rapidjson::kStringType)
                 return Expression::PropString;
@@ -37,37 +37,41 @@ public:
                 return Expression::PropInt;
             return Expression::PropNone;
         }
-        const char * Name() {
+        inline const char * Name() {
             return it->name.GetString();
         }
-        size_t NameLen() {
+        inline size_t NameLen() {
             return it->name.GetStringLength();
         }
-        const char * String() {
+        inline const char * String() {
             return it->value.GetString();
         }
-        size_t ValLen() {
+        inline size_t StringLen() {
             return it->value.GetStringLength();
         }
-        Expression::PropValInt Int() {
+        inline Expression::PropValInt Int() {
             return (Expression::PropValInt)it->value.GetInt();
         }
-        Expression::PropValFloat Float() {
+        inline Expression::PropValFloat Float() {
             return (Expression::PropValFloat)it->value.GetDouble();
         }
     };
 
-    iterator begin() {
+    inline size_t count() {
+        return doc.MemberCount();
+    }
+
+    inline iterator begin() {
         return iterator(doc.MemberBegin());
     }
 
-    iterator end() {
+    inline iterator end() {
         return iterator(doc.MemberEnd());
     }
 };
 
 int main() {
-    const char* expression = "(brand = 'Apple' & price > 6000) | (brand = 'HW' & price > 5000)";
+    const char* expression = "(brand = 'Apple' & price > 6000) | (brand = 'HW' | price > 5000)";
     const char *data = R"({"brand": "Apple", "price": 5888.8})";
 
     Expressions exp;
@@ -80,11 +84,11 @@ int main() {
     Dict d(row);
 
     time_t start = clock(), end;
-
     int testCases = 1000000;
-    for(int T = 0; T < testCases; T ++) {
-        bool matched = exp.Match(d);
-        std::cout << matched << std::endl;
+  
+    for (int T = 0; T < testCases; T ++) {
+        bool matched = exp.Matched(d);
+        printf("%d\n", matched);
     }
 
     end = clock();

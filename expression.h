@@ -3,11 +3,9 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <unordered_map>
 
 using std::vector;
 using std::ostream;
-using std::unordered_map;
 using std::abs;
 
 struct Expression {
@@ -25,7 +23,7 @@ struct Expression {
         PropLeftBracket
     };
 
-    enum CmpOp {Eq, Ge, Le, Gt, Lt, Or, And, Nd};
+    enum CmpOp {Eq, Ge, Le, Gt, Lt, Or, And};
 
     enum ReturnType {
         Undefined,
@@ -76,7 +74,6 @@ struct Expression {
     Bool val_bool;
 
     inline Expression(): type(PropBool), val_bool(Undefined) {}
-    //: type(PropNone), cmp_op(Nd), val_int(0), val_float(0), val_bool(Undefined), name(0), val_string(0) {}
 
     inline Expression & Assign(const PropValInt &propValInt) {
         type = PropInt;
@@ -190,21 +187,19 @@ struct Expression {
     inline Expression & CalcGt(const T &a, const T &b) {
         return AssignBool(a > b);
     }
-    inline Expression & CalcAnd(const Bool &a, const Bool &b) {
+    template <typename T>
+    inline Expression & CalcAnd(const T &a, const T &b) {
         return AssignBool(a && b);
     }
-    inline Expression & CalcAnd(const unsigned &a, const unsigned &b) {
+    template <typename T>
+    inline Expression & CalcOr(const T &a, const T &b) {
+        return AssignBool(a || b);
+    }
+    inline Expression & CalcAnd(const Bool &a, const Bool &b) {
         return AssignBool(a && b);
     }
     inline Expression & CalcOr(const Bool &a, const Bool &b) {
         return AssignBool(a || b);
-    }
-    inline Expression & CalcOr(const unsigned &a, const unsigned &b) {
-        return AssignBool(a || b);
-    }
-    inline float ToFloat() const {
-        // assert(type == PropInt || type == PropFloat);
-        return val_float;
     }
 
     template <class T>
@@ -235,15 +230,19 @@ struct Expression {
             return Exec(val_bool, rhs.val_bool, op);
         if (type == PropString)
             return Exec(val_string, rhs.val_string, op);
-        if (type == PropFloat)
-            return Exec(val_float, rhs.ToFloat(), op);
-        if (rhs.type == PropFloat)
-            return Exec(ToFloat(), rhs.val_float, op);
+        if (type == PropFloat || rhs.type == PropFloat)
+            return Exec(val_float, rhs.val_float, op);
         return Exec(val_int, rhs.val_int, op);
     }
 };
 
-struct Expressions : public vector<Expression> {
+class Expressions {
+
+    using CmpOp = Expression::CmpOp;
+
+    using PropValInt = Expression::PropValInt;
+    using PropValFloat = Expression::PropValFloat;
+
     template<typename T>
     class Stack {
         size_t capacity;
@@ -252,7 +251,7 @@ struct Expressions : public vector<Expression> {
         T *content;
 
     public:
-        inline explicit Stack(size_t capacity_ = 4) : capacity(capacity_) {
+        inline explicit Stack(size_t capacity_ = 8) : capacity(capacity_) {
             content = new T[capacity];
             tail = content;
         }
@@ -309,10 +308,7 @@ struct Expressions : public vector<Expression> {
 
     template<typename K, typename V>
     class HashMap {
-        enum {
-            HASH_SIZE = 31,
-        };
-
+        const static unsigned HASH_SIZE = 31;
         size_t capacity;
         struct node {
             K key;
@@ -334,6 +330,10 @@ struct Expressions : public vector<Expression> {
             tail = pool;
         }
 
+        inline ~HashMap() {
+            delete[] pool;
+        }
+
         inline size_t Size() {
             return tail - pool;
         }
@@ -341,7 +341,6 @@ struct Expressions : public vector<Expression> {
             return tail == pool;
         }
 
-        // Please ensure that you used find first
         inline V get(const K &key) {
             node *p = content[key & HASH_SIZE];
             for (; p; p = p->next) {
@@ -349,7 +348,6 @@ struct Expressions : public vector<Expression> {
                     return p->val;
                 }
             }
-            assert(false);
             return V();
         }
         inline void insert(const K &key, const V &val) {
@@ -379,6 +377,7 @@ struct Expressions : public vector<Expression> {
         }
 
         inline friend ostream & operator << (ostream &w, HashMap &x) {
+            w << "size: " << x.Size();
             if (!x.Empty()) {
                 for (auto p = x.tail - 1; p != x.pool; --p)
                     w << "(" << p->key << ", " << p->val << ") ";
@@ -387,24 +386,15 @@ struct Expressions : public vector<Expression> {
         }
     };
 
-    using Self = vector<Expression>;
+    HashMap<unsigned, Expression> val;
 
-    using CmpOp = Expression::CmpOp;
-
-    using PropValInt = Expression::PropValInt;
-    using PropValFloat = Expression::PropValFloat;
+    std::vector<Expression> Self;
 
     inline bool IsW(const char &c) {
         return isalpha(c) || isdigit(c) || c == '_';
     }
     inline bool IsD(const char &c) {
         return isdigit(c) || c == '.';
-    }
-
-    inline friend ostream & operator << (ostream &w, const Expressions &exps) {
-        for (const Expression &exp: exps)
-            w << exp << " ";
-        return w;
     }
 
     inline static int Prior(const Expression &exp) {
@@ -417,9 +407,19 @@ struct Expressions : public vector<Expression> {
         return 1;
     }
 
-    inline void Parse(const char *in) {
-        Self::clear();
+public:
+
+    inline friend ostream & operator << (ostream &w, const Expressions &exps) {
+        for (const Expression &exp: exps.Self) {
+            w << exp << " ";
+        }
+        return w;
+    }
+
+    void Parse(const char *in) {
+        Self.clear();
         Stack<Expression> stack;
+        Expression ret;
         char g = 0;
         auto len = (int)strlen(in);
         for (int i = 0; i < len; ) {
@@ -428,13 +428,13 @@ struct Expressions : public vector<Expression> {
                 ++i;
                 continue;
             }
-            Expression ret;
+
             if (isalpha(g)) {
                 unsigned hashcode = 0;
                 while (IsW(in[i]))
                     hashcode = hashcode * 131U + in[i ++];
-                dict.insert(hashcode, ret.AssignBool());
-                Self::emplace_back(ret.AssignParameter(hashcode));
+                val.insert(hashcode, ret.AssignBool());
+                Self.emplace_back(ret.AssignParameter(hashcode));
             } else if (isdigit(g) || g == '-') {
                 PropValInt ans = 0, fac = 1;
                 PropValFloat ansFloat = 0;
@@ -457,9 +457,9 @@ struct Expressions : public vector<Expression> {
                     ++i;
                 }
                 if (cnt == 1)
-                    Self::emplace_back(ret.Assign(fac * ansFloat * d));
+                    Self.emplace_back(ret.Assign(fac * ansFloat * d));
                 else if (cnt == 0)
-                    Self::emplace_back(ret.Assign(fac * ans));
+                    Self.emplace_back(ret.Assign(fac * ans));
                 else
                     assert(false);
             } else if (g == '\'') {
@@ -469,23 +469,23 @@ struct Expressions : public vector<Expression> {
                 unsigned hashcode = 0;
                 while ((g = in[i++]) != '\'')
                     hashcode = hashcode * 131U + g;
-                Self::emplace_back(ret.Assign(hashcode));
+                Self.emplace_back(ret.Assign(hashcode));
             } else if (g == '(') {
                 ++i;
                 stack.Push(ret.LeftBracket());
             } else if (g == ')') {
                 ++i;
                 while(!stack.Empty() && stack.Top().type != Expression::PropLeftBracket)
-                    Self::emplace_back(stack.Pop());
+                    Self.emplace_back(stack.Pop());
                 stack.Pop();
             } else if (g == '&' || g == '|') {
                 ++i;
                 while (!stack.Empty() && stack.Top().type != Expression::PropLeftBracket)
-                    Self::emplace_back(stack.Pop());
+                    Self.emplace_back(stack.Pop());
                 stack.Push(ret.AssignOp(g));
             } else if (g == '=' || g == '<' || g == '>') {
                 while (!stack.Empty() && stack.Top().type != Expression::PropLeftBracket && Prior(stack.Top()) >= 1)
-                    Self::emplace_back(stack.Pop());
+                    Self.emplace_back(stack.Pop());
                 ++i;
                 if (in[i] == '=') {
                     ++i;
@@ -499,27 +499,32 @@ struct Expressions : public vector<Expression> {
         }
 
         while (!stack.Empty())
-            Self::emplace_back(stack.Pop());
+            Self.emplace_back(stack.Pop());
     }
 
     template <typename iterable>
-    inline bool Match(iterable& props) {
+    inline bool Matched(iterable& props) {
         // TODO: Assign => constructor
         Expression exp;
-        for (auto it = props.begin(); it != props.end(); ++it) {
+        int cnt = 0, tot = props.count();
+        unsigned used[tot];
+        for (auto it = props.begin(); cnt < tot; ++it, ++cnt) {
             auto type = it->Type();
             unsigned hashcode = 0;
             const char *p = it->Name();
             int len = it->NameLen();
-            for (int i = 0; i < len; ++i)
-                hashcode = hashcode * 131U + *(p + i);
+            for (int i = 0; i < len; ++i) {
+                hashcode = hashcode * 131U + p[i];
+            }
+            used[cnt] = hashcode;
             if (type == Expression::PropString) {
                 unsigned hashcode2 = 0;
                 const char *q = it->String();
-                len = it->ValLen();
-                for (int i = 0; i < len; ++i)
-                    hashcode2 = hashcode2 * 131U + *(q + i);
-                dict.insert(hashcode, exp.Assign(hashcode2));
+                len = it->StringLen();
+                for (int i = 0; i < len; ++i) {
+                    hashcode2 = hashcode2 * 131U + q[i];
+                }
+                val.insert(hashcode, exp.Assign(hashcode2));
             } else if (type == Expression::PropInt) {
                 dict.insert(hashcode, exp.Assign(it->Int()));
             } else if (type == Expression::PropFloat) {
@@ -528,20 +533,23 @@ struct Expressions : public vector<Expression> {
                 assert(false);
             }
         }
+        exp.AssignBool();
 
         Stack<Expression> stack;
-        for (const auto &exp: *this) {
-            if (exp.type == Expression::PropParameter) {
-                stack.Push(dict.get(exp.name));
-            } else if (exp.type != Expression::PropOp) {
-                stack.Push(exp);
+        for (const Expression &e: Self) {
+            if (e.type == Expression::PropParameter) {
+                stack.Push(val.get(e.name));
+            } else if (e.type != Expression::PropOp) {
+                stack.Push(e);
             } else {
                 Expression t1 = stack.Pop();
                 Expression t2 = stack.Pop();
-                // std::cout << t2 << e << t1 << "??" << std::endl;
-                stack.Push(t2.Calc(exp.cmp_op, t1));
-                // std::cout << t2.Calc(e.cmp_op, t1) << std::endl;
+                stack.Push(t2.Calc(e.cmp_op, t1));
             }
+        }
+
+        for(int i = 0; i < cnt; i ++) {
+            val.insert(used[i], exp);
         }
 
         // assert(stack.Size() == 1);
