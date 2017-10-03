@@ -7,6 +7,7 @@
 using std::vector;
 using std::ostream;
 using std::abs;
+using HashCode = uint32_t;
 
 struct Expression {
     using PropType = uint8_t;
@@ -65,8 +66,6 @@ struct Expression {
         }
     };
 
-    using HashCode = uint32_t;
-
     PropType type;
     CmpOp cmp_op;
     HashCode name;
@@ -89,7 +88,7 @@ struct Expression {
         val_float = propValFloat;
         return *this;
     }
-    inline Expression & Assign(const HashCode &hashcode) {
+    inline Expression & Assign(const HashCode& hashcode) {
         type = PropString;
         val_string = hashcode;
         return *this;
@@ -240,10 +239,10 @@ struct Expression {
 };
 
 class Expressions: public vector<Expression> {
+
     using Self = vector<Expression>;
 
     using CmpOp = Expression::CmpOp;
-    using HashCode = Expression::HashCode;
 
     using PropValInt = Expression::PropValInt;
     using PropValFloat = Expression::PropValFloat;
@@ -349,6 +348,7 @@ class Expressions: public vector<Expression> {
     inline Expression get(Pair *src_begin, Pair *src_end, const HashCode &hashcode) {
         Expression exp;
         Pair p(hashcode, exp.AssignBool());
+//        Pair *ret = std::find(src_begin, src_end, p);
         Pair *ret = std::lower_bound(src_begin, src_end, p);
 
         if (ret != src_end && ret->name == hashcode) {
@@ -357,6 +357,9 @@ class Expressions: public vector<Expression> {
             return exp;
         }
     }
+
+    Stack<Expression> stack;
+    Pair used[8];
 
 public:
 
@@ -369,7 +372,6 @@ public:
 
     void Parse(const char *in) {
         Self::clear();
-        Stack<Expression> stack;
         Expression ret;
         char g = 0;
         auto len = (int)strlen(in);
@@ -453,10 +455,9 @@ public:
     }
 
     template <typename iterable>
-    inline bool Match(const iterable &props) {
+    inline bool Match(const iterable& props) {
         Expression exp;
         int cnt = 0, tot = props.size();
-        Pair used[tot];
         for (auto it = props.begin(); cnt < tot; ++it, ++cnt) {
             auto type = it->Type();
             HashCode hashcode = 0;
@@ -483,20 +484,20 @@ public:
         }
         std::sort(used, used + cnt);
 
-        Stack<Expression> stack;
+        Expression t1, t2;
         for (const Expression &e: *this) {
             if (e.type == Expression::PropParameter) {
                 stack.Push(get(used, used + cnt, e.name));
             } else if (e.type != Expression::PropOp) {
                 stack.Push(e);
             } else {
-                Expression t1 = stack.Pop();
-                Expression t2 = stack.Pop();
+                t1 = stack.Pop();
+                t2 = stack.Pop();
                 stack.Push(t2.Calc(e.cmp_op, t1));
             }
         }
 
         // assert(stack.Size() == 1);
-        return stack.Top().val_bool.ans != Expression::False;
+        return stack.Pop().val_bool.ans != Expression::False;
     }
 };
