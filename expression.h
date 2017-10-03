@@ -586,4 +586,7 @@ public:
         // assert(stack.Size() == 1);
         return stack.Top().val_bool.ans != Expression::False;
     }
+
+private:
+    HashMap<unsigned, Expression> dict;
 };
