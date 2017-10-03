@@ -86,7 +86,7 @@ int main() {
     time_t start = clock(), end;
     int testCases = 1000000;
 
-    for(int T = 0; T < testCases; T ++) {
+    for (int T = 0; T < testCases; T ++) {
         bool matched = exp.Matched(d);
         printf("%d\n", matched);
     }

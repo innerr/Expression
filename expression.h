@@ -307,6 +307,25 @@ class Expressions: public vector<Expression> {
         }
     };
 
+    class Pair {
+    public:
+        uint32_t name;
+        Expression exp;
+        inline Pair(): name(0), exp() {}
+        inline Pair(const uint32_t &name_, const Expression &exp_): name(name_), exp(exp_) {}
+
+        inline void set(const uint32_t &name_, const Expression &exp_) {
+            name = name_;
+            exp = exp_;
+        }
+        inline bool operator < (const Pair& rhs) const {
+            return name < rhs.name;
+        }
+        inline bool operator == (const Pair& rhs) const {
+            return name == rhs.name;
+        }
+    };
+
     inline bool IsW(const char &c) {
         return isalpha(c) || isdigit(c) || c == '_';
     }
@@ -417,25 +436,6 @@ public:
         while (!stack.Empty())
             Self::emplace_back(stack.Pop());
     }
-
-    class Pair {
-    public:
-        uint32_t name;
-        Expression exp;
-        inline Pair(): name(0), exp() {}
-        inline Pair(const uint32_t &name_, const Expression &exp_): name(name_), exp(exp_) {}
-
-        inline void set(const uint32_t &name_, const Expression &exp_) {
-            name = name_;
-            exp = exp_;
-        }
-        inline bool operator < (const Pair& rhs) const {
-            return name < rhs.name;
-        }
-        inline bool operator == (const Pair& rhs) const {
-            return name == rhs.name;
-        }
-    };
 
     inline Expression get(Pair *src_begin, Pair *src_end, const uint32_t &hashcode) {
         Expression exp;
