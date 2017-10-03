@@ -66,9 +66,9 @@ struct Expression {
 
     PropType type;
     CmpOp cmp_op;
-    unsigned name;
+    uint32_t name;
 
-    unsigned val_string;
+    uint32_t val_string;
     PropValInt val_int;
     PropValFloat val_float;
     Bool val_bool;
@@ -86,7 +86,7 @@ struct Expression {
         val_float = propValFloat;
         return *this;
     }
-    inline Expression & Assign(const unsigned& hashcode) {
+    inline Expression & Assign(const uint32_t& hashcode) {
         type = PropString;
         val_string = hashcode;
         return *this;
@@ -107,7 +107,7 @@ struct Expression {
         return *this;
     }
 
-    inline Expression & AssignParameter(const unsigned &hashcode) {
+    inline Expression & AssignParameter(const uint32_t &hashcode) {
         type = PropParameter;
         name = hashcode;
         return *this;
@@ -236,7 +236,9 @@ struct Expression {
     }
 };
 
-class Expressions {
+class Expressions: public vector<Expression> {
+
+    using Self = vector<Expression>;
 
     using CmpOp = Expression::CmpOp;
 
@@ -246,7 +248,6 @@ class Expressions {
     template<typename T>
     class Stack {
         size_t capacity;
-        // using pointer has no visible effect on speed
         T *tail;
         T *content;
 
@@ -306,90 +307,6 @@ class Expressions {
         }
     };
 
-    template<typename K, typename V>
-    class HashMap {
-        const static unsigned HASH_SIZE = 31;
-        size_t capacity;
-        struct node {
-            K key;
-            V val;
-            node *next;
-            node(): next(nullptr) {}
-            node(const K &key_, const V &val_): key(key_), val(val_), next(nullptr) {}
-        };
-        node *tail;
-        node *content[HASH_SIZE];
-        node *pool;
-
-    public:
-        inline explicit HashMap(size_t capacity_ = 8) : capacity(capacity_) {
-            pool = new node[capacity];
-            for (node* &g: content) {
-                g = nullptr;
-            }
-            tail = pool;
-        }
-
-        inline ~HashMap() {
-            delete[] pool;
-        }
-
-        inline size_t Size() {
-            return tail - pool;
-        }
-        inline bool Empty() {
-            return tail == pool;
-        }
-
-        inline V get(const K &key) {
-            node *p = content[key & HASH_SIZE];
-            for (; p; p = p->next) {
-                if (p->key == key) {
-                    return p->val;
-                }
-            }
-            return V();
-        }
-        inline void insert(const K &key, const V &val) {
-            node *p = content[key & HASH_SIZE];
-            if (p == nullptr) {
-                tail->key = key;
-                tail->val = val;
-                tail->next = nullptr;
-                content[key & HASH_SIZE] = tail;
-                ++tail;
-                return;
-            }
-            node *prev = p;
-            for (; p; p = p->next) {
-                if (p->key == key) {
-                    p->val = val;
-                    return;
-                }
-                prev = p;
-            }
-            // TODO: to support dynamic allocation
-            tail->key = key;
-            tail->val = val;
-            tail->next = nullptr;
-            prev->next = tail;
-            ++tail;
-        }
-
-        inline friend ostream & operator << (ostream &w, HashMap &x) {
-            w << "size: " << x.Size();
-            if (!x.Empty()) {
-                for (auto p = x.tail - 1; p != x.pool; --p)
-                    w << "(" << p->key << ", " << p->val << ") ";
-            }
-            return w;
-        }
-    };
-
-    HashMap<unsigned, Expression> val;
-
-    std::vector<Expression> Self;
-
     inline bool IsW(const char &c) {
         return isalpha(c) || isdigit(c) || c == '_';
     }
@@ -410,14 +327,14 @@ class Expressions {
 public:
 
     inline friend ostream & operator << (ostream &w, const Expressions &exps) {
-        for (const Expression &exp: exps.Self) {
+        for (const Expression &exp: exps) {
             w << exp << " ";
         }
         return w;
     }
 
     void Parse(const char *in) {
-        Self.clear();
+        Self::clear();
         Stack<Expression> stack;
         Expression ret;
         char g = 0;
@@ -430,11 +347,10 @@ public:
             }
 
             if (isalpha(g)) {
-                unsigned hashcode = 0;
+                uint32_t hashcode = 0;
                 while (IsW(in[i]))
                     hashcode = hashcode * 131U + in[i ++];
-                val.insert(hashcode, ret.AssignBool());
-                Self.emplace_back(ret.AssignParameter(hashcode));
+                Self::emplace_back(ret.AssignParameter(hashcode));
             } else if (isdigit(g) || g == '-') {
                 PropValInt ans = 0, fac = 1;
                 PropValFloat ansFloat = 0;
@@ -457,35 +373,35 @@ public:
                     ++i;
                 }
                 if (cnt == 1)
-                    Self.emplace_back(ret.Assign(fac * ansFloat * d));
+                    Self::emplace_back(ret.Assign(fac * ansFloat * d));
                 else if (cnt == 0)
-                    Self.emplace_back(ret.Assign(fac * ans));
+                    Self::emplace_back(ret.Assign(fac * ans));
                 else
                     assert(false);
             } else if (g == '\'') {
                 // TODO: solve complex case
                 ++i;
                 int j = 0;
-                unsigned hashcode = 0;
+                uint32_t hashcode = 0;
                 while ((g = in[i++]) != '\'')
                     hashcode = hashcode * 131U + g;
-                Self.emplace_back(ret.Assign(hashcode));
+                Self::emplace_back(ret.Assign(hashcode));
             } else if (g == '(') {
                 ++i;
                 stack.Push(ret.LeftBracket());
             } else if (g == ')') {
                 ++i;
                 while(!stack.Empty() && stack.Top().type != Expression::PropLeftBracket)
-                    Self.emplace_back(stack.Pop());
+                    Self::emplace_back(stack.Pop());
                 stack.Pop();
             } else if (g == '&' || g == '|') {
                 ++i;
                 while (!stack.Empty() && stack.Top().type != Expression::PropLeftBracket)
-                    Self.emplace_back(stack.Pop());
+                    Self::emplace_back(stack.Pop());
                 stack.Push(ret.AssignOp(g));
             } else if (g == '=' || g == '<' || g == '>') {
                 while (!stack.Empty() && stack.Top().type != Expression::PropLeftBracket && Prior(stack.Top()) >= 1)
-                    Self.emplace_back(stack.Pop());
+                    Self::emplace_back(stack.Pop());
                 ++i;
                 if (in[i] == '=') {
                     ++i;
@@ -499,46 +415,74 @@ public:
         }
 
         while (!stack.Empty())
-            Self.emplace_back(stack.Pop());
+            Self::emplace_back(stack.Pop());
+    }
+
+    class Pair {
+    public:
+        uint32_t name;
+        Expression exp;
+        inline Pair(): name(0), exp() {}
+        inline Pair(const uint32_t &name_, const Expression &exp_): name(name_), exp(exp_) {}
+
+        inline void set(const uint32_t &name_, const Expression &exp_) {
+            name = name_;
+            exp = exp_;
+        }
+        inline bool operator < (const Pair& rhs) const {
+            return name < rhs.name;
+        }
+        inline bool operator == (const Pair& rhs) const {
+            return name == rhs.name;
+        }
+    };
+
+    inline Expression get(Pair *src_begin, Pair *src_end, const uint32_t &hashcode) {
+        Expression exp;
+        Pair p(hashcode, exp.AssignBool()), ret = (*std::lower_bound(src_begin, src_end, p));
+
+        if (ret.name == hashcode) {
+            return ret.exp;
+        } else {
+            return exp;
+        }
     }
 
     template <typename iterable>
     inline bool Matched(iterable& props) {
-        // TODO: Assign => constructor
         Expression exp;
         int cnt = 0, tot = props.count();
-        unsigned used[tot];
+        Pair used[tot];
         for (auto it = props.begin(); cnt < tot; ++it, ++cnt) {
             auto type = it->Type();
-            unsigned hashcode = 0;
+            uint32_t hashcode = 0;
             const char *p = it->Name();
             int len = it->NameLen();
             for (int i = 0; i < len; ++i) {
                 hashcode = hashcode * 131U + p[i];
             }
-            used[cnt] = hashcode;
             if (type == Expression::PropString) {
-                unsigned hashcode2 = 0;
+                uint32_t hashcode2 = 0;
                 const char *q = it->String();
                 len = it->StringLen();
                 for (int i = 0; i < len; ++i) {
                     hashcode2 = hashcode2 * 131U + q[i];
                 }
-                val.insert(hashcode, exp.Assign(hashcode2));
+                used[cnt].set(hashcode, exp.Assign(hashcode2));
             } else if (type == Expression::PropInt) {
-                val.insert(hashcode, exp.Assign(it->Int()));
+                used[cnt].set(hashcode, exp.Assign(it->Int()));
             } else if (type == Expression::PropFloat) {
-                val.insert(hashcode, exp.Assign(it->Float()));
+                used[cnt].set(hashcode, exp.Assign(it->Float()));
             } else {
                 assert(false);
             }
         }
-        exp.AssignBool();
+        std::sort(used, used + cnt);
 
         Stack<Expression> stack;
-        for (const Expression &e: Self) {
+        for (const Expression &e: *this) {
             if (e.type == Expression::PropParameter) {
-                stack.Push(val.get(e.name));
+                stack.Push(get(used, used + cnt, e.name));
             } else if (e.type != Expression::PropOp) {
                 stack.Push(e);
             } else {
@@ -546,10 +490,6 @@ public:
                 Expression t2 = stack.Pop();
                 stack.Push(t2.Calc(e.cmp_op, t1));
             }
-        }
-
-        for(int i = 0; i < cnt; i ++) {
-            val.insert(used[i], exp);
         }
 
         // assert(stack.Size() == 1);

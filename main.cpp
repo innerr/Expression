@@ -71,7 +71,7 @@ public:
 };
 
 int main() {
-    const char* expression = "(brand = 'Apple' & price > 6000) | (brand = 'HW' | price > 5000)";
+    const char* expression = "(brand = 'Apple' & price > 6000) | (brand = 'HW' & price > 5000)";
     const char *data = R"({"brand": "Apple", "price": 5888.8})";
 
     Expressions exp;
