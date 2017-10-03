@@ -526,9 +526,9 @@ public:
                 }
                 val.insert(hashcode, exp.Assign(hashcode2));
             } else if (type == Expression::PropInt) {
-                val.insert(hashcode, exp.Assign(it->Int()));
+                dict.insert(hashcode, exp.Assign(it->Int()));
             } else if (type == Expression::PropFloat) {
-                val.insert(hashcode, exp.Assign(it->Float()));
+                dict.insert(hashcode, exp.Assign(it->Float()));
             } else {
                 assert(false);
             }
@@ -555,4 +555,7 @@ public:
         // assert(stack.Size() == 1);
         return stack.Top().val_bool.ans != Expression::False;
     }
+
+private:
+    HashMap<unsigned, Expression> dict;
 };
