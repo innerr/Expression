@@ -40,13 +40,13 @@ public:
         inline const char * Name() {
             return it->name.GetString();
         }
-        inline size_t NameLength() {
+        inline size_t NameLen() {
             return it->name.GetStringLength();
         }
         inline const char * String() {
             return it->value.GetString();
         }
-        inline size_t StringLength() {
+        inline size_t StringLen() {
             return it->value.GetStringLength();
         }
         inline Expression::PropValInt Int() {
@@ -71,7 +71,7 @@ public:
 };
 
 int main() {
-    const char* expression = "(brand = 'Apple' & price > 6000) | (brand = 'HW' & price > 5000)";
+    const char* expression = "(brand = 'Apple' & price > 6000) | (brand = 'HW' | price > 5000)";
     const char *data = R"({"brand": "Apple", "price": 5888.8})";
 
     Expressions exp;
@@ -84,9 +84,8 @@ int main() {
     Dict d(row);
 
     time_t start = clock(), end;
-
     int testCases = 1000000;
-//    bool matched = false;
+
     for(int T = 0; T < testCases; T ++) {
         bool matched = exp.Matched(d);
         printf("%d\n", matched);

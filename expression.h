@@ -3,7 +3,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-//#define dump(x) std::cout << (#x) << ": " << x << '\n'
 
 using std::vector;
 using std::ostream;
@@ -24,7 +23,7 @@ struct Expression {
         PropLeftBracket
     };
 
-    enum CmpOp {Eq, Ge, Le, Gt, Lt, Or, And, Nd};
+    enum CmpOp {Eq, Ge, Le, Gt, Lt, Or, And};
 
     enum ReturnType {
         Undefined,
@@ -74,7 +73,7 @@ struct Expression {
     PropValFloat val_float;
     Bool val_bool;
 
-    inline Expression(): type(PropBool), val_bool(Undefined) {}//: type(PropNone), cmp_op(Nd), val_int(0), val_float(0), val_bool(Undefined), name(0), val_string(0) {}
+    inline Expression(): type(PropBool), val_bool(Undefined) {}
 
     inline Expression & Assign(const PropValInt &propValInt) {
         type = PropInt;
@@ -202,9 +201,6 @@ struct Expression {
     inline Expression & CalcOr(const Bool &a, const Bool &b) {
         return AssignBool(a || b);
     }
-    inline float ToFloat() const {
-        return val_float;
-    }
 
     template <class T>
     inline Expression & Exec(const T &a, const T &b, const CmpOp &op) {
@@ -311,7 +307,8 @@ class Expressions {
     };
 
     template<typename K, typename V>
-    class hashMap {
+    class HashMap {
+        const static unsigned HASH_SIZE = 31;
         size_t capacity;
         struct node {
             K key;
@@ -321,12 +318,11 @@ class Expressions {
             node(const K &key_, const V &val_): key(key_), val(val_), next(nullptr) {}
         };
         node *tail;
-#define HASH_SIZE 31
         node *content[HASH_SIZE];
         node *pool;
 
     public:
-        inline explicit hashMap(size_t capacity_ = 8) : capacity(capacity_) {
+        inline explicit HashMap(size_t capacity_ = 8) : capacity(capacity_) {
             pool = new node[capacity];
             for (node* &g: content) {
                 g = nullptr;
@@ -334,7 +330,7 @@ class Expressions {
             tail = pool;
         }
 
-        inline ~hashMap() {
+        inline ~HashMap() {
             delete[] pool;
         }
 
@@ -345,7 +341,6 @@ class Expressions {
             return tail == pool;
         }
 
-        //please ensure that you used find first
         inline V get(const K &key) {
             node *p = content[key & HASH_SIZE];
             for (; p; p = p->next) {
@@ -381,7 +376,8 @@ class Expressions {
             ++tail;
         }
 
-        inline friend ostream & operator << (ostream &w, hashMap &x) {
+        inline friend ostream & operator << (ostream &w, HashMap &x) {
+            w << "size: " << x.Size();
             if (!x.Empty()) {
                 for (auto p = x.tail - 1; p != x.pool; --p)
                     w << "(" << p->key << ", " << p->val << ") ";
@@ -390,7 +386,7 @@ class Expressions {
         }
     };
 
-    hashMap<unsigned, Expression> val;
+    HashMap<unsigned, Expression> val;
 
     std::vector<Expression> Self;
 
@@ -423,7 +419,6 @@ public:
     void Parse(const char *in) {
         Self.clear();
         Stack<Expression> stack;
-        hashMap<unsigned, Expression> dict;
         Expression ret;
         char g = 0;
         auto len = (int)strlen(in);
@@ -509,51 +504,55 @@ public:
 
     template <typename iterable>
     inline bool Matched(iterable& props) {
-        hashMap<unsigned, Expression> map;
         // TODO: Assign => constructor
         Expression exp;
-        int cnt = 0;
-        for (auto it = props.begin(); cnt < props.count(); ++it, ++cnt) {
+        int cnt = 0, tot = props.count();
+        unsigned used[tot];
+        for (auto it = props.begin(); cnt < tot; ++it, ++cnt) {
             auto type = it->Type();
             unsigned hashcode = 0;
             const char *p = it->Name();
-            int len = it->NameLength();
+            int len = it->NameLen();
             for (int i = 0; i < len; ++i) {
                 hashcode = hashcode * 131U + p[i];
             }
+            used[cnt] = hashcode;
             if (type == Expression::PropString) {
                 unsigned hashcode2 = 0;
                 const char *q = it->String();
-                len = it->StringLength();
+                len = it->StringLen();
                 for (int i = 0; i < len; ++i) {
                     hashcode2 = hashcode2 * 131U + q[i];
                 }
-                map.insert(hashcode, exp.Assign(hashcode2));
+                val.insert(hashcode, exp.Assign(hashcode2));
             } else if (type == Expression::PropInt) {
-                map.insert(hashcode, exp.Assign(it->Int()));
+                val.insert(hashcode, exp.Assign(it->Int()));
             } else if (type == Expression::PropFloat) {
-                map.insert(hashcode, exp.Assign(it->Float()));
+                val.insert(hashcode, exp.Assign(it->Float()));
             } else {
                 assert(false);
             }
         }
-//        return true;
+        exp.AssignBool();
+
         Stack<Expression> stack;
-        for (const auto &e: Self) {
+        for (const Expression &e: Self) {
             if (e.type == Expression::PropParameter) {
-                stack.Push(map.get(e.name));
+                stack.Push(val.get(e.name));
             } else if (e.type != Expression::PropOp) {
                 stack.Push(e);
             } else {
                 Expression t1 = stack.Pop();
                 Expression t2 = stack.Pop();
-//                 std::cout << t2 << e << t1 << "??" << std::endl;
                 stack.Push(t2.Calc(e.cmp_op, t1));
-//                 std::cout << t2.Calc(e.cmp_op, t1) << std::endl;
             }
         }
 
-//         assert(stack.Size() == 1);
+        for(int i = 0; i < cnt; i ++) {
+            val.insert(used[i], exp);
+        }
+
+        // assert(stack.Size() == 1);
         return stack.Top().val_bool.ans != Expression::False;
     }
 };
