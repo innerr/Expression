@@ -64,6 +64,8 @@ struct Expression {
         }
     };
 
+    using HashCode = uint32_t;
+
     PropType type;
     CmpOp cmp_op;
     uint32_t name;
@@ -496,4 +498,7 @@ public:
         // assert(stack.Size() == 1);
         return stack.Top().val_bool.ans != Expression::False;
     }
+
+private:
+    HashMap<HashCode, Expression> dict;
 };
