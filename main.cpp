@@ -46,7 +46,7 @@ public:
         inline const char * String() {
             return it->value.GetString();
         }
-        inline size_t StringLen() {
+        inline size_t ValLen() {
             return it->value.GetStringLength();
         }
         inline Expression::PropValInt Int() {
@@ -57,15 +57,15 @@ public:
         }
     };
 
-    inline size_t count() {
+    inline size_t size() const {
         return doc.MemberCount();
     }
 
-    inline iterator begin() {
+    inline iterator begin() const {
         return iterator(doc.MemberBegin());
     }
 
-    inline iterator end() {
+    inline iterator end() const {
         return iterator(doc.MemberEnd());
     }
 };
@@ -87,7 +87,7 @@ int main() {
     int testCases = 1000000;
 
     for (int T = 0; T < testCases; T ++) {
-        bool matched = exp.Matched(d);
+        bool matched = exp.Match(d);
         printf("%d\n", matched);
     }
 

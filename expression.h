@@ -9,18 +9,19 @@ using std::ostream;
 using std::abs;
 
 struct Expression {
-    using PropValInt = int;
+    using PropType = uint8_t;
+    using PropValInt = int32_t;
     using PropValFloat = float;
 
-    enum PropType {
-        PropNone,
-        PropString,
-        PropInt,
-        PropFloat,
-        PropBool,
-        PropParameter,
-        PropOp,
-        PropLeftBracket
+    enum {
+        PropString = 0,
+        PropInt = 1,
+        PropFloat = 2,
+        PropBool = 3,
+        PropParameter = 4,
+        PropOp = 5,
+        PropLeftBracket = 6,
+        PropNone = 255,
     };
 
     enum CmpOp {Eq, Ge, Le, Gt, Lt, Or, And};
@@ -68,9 +69,9 @@ struct Expression {
 
     PropType type;
     CmpOp cmp_op;
-    uint32_t name;
+    HashCode name;
 
-    uint32_t val_string;
+    HashCode val_string;
     PropValInt val_int;
     PropValFloat val_float;
     Bool val_bool;
@@ -88,7 +89,7 @@ struct Expression {
         val_float = propValFloat;
         return *this;
     }
-    inline Expression & Assign(const uint32_t& hashcode) {
+    inline Expression & Assign(const HashCode &hashcode) {
         type = PropString;
         val_string = hashcode;
         return *this;
@@ -109,7 +110,7 @@ struct Expression {
         return *this;
     }
 
-    inline Expression & AssignParameter(const uint32_t &hashcode) {
+    inline Expression & AssignParameter(const HashCode &hashcode) {
         type = PropParameter;
         name = hashcode;
         return *this;
@@ -239,10 +240,10 @@ struct Expression {
 };
 
 class Expressions: public vector<Expression> {
-
     using Self = vector<Expression>;
 
     using CmpOp = Expression::CmpOp;
+    using HashCode = Expression::HashCode;
 
     using PropValInt = Expression::PropValInt;
     using PropValFloat = Expression::PropValFloat;
@@ -311,12 +312,12 @@ class Expressions: public vector<Expression> {
 
     class Pair {
     public:
-        uint32_t name;
+        HashCode name;
         Expression exp;
         inline Pair(): name(0), exp() {}
-        inline Pair(const uint32_t &name_, const Expression &exp_): name(name_), exp(exp_) {}
+        inline Pair(const HashCode &name_, const Expression &exp_): name(name_), exp(exp_) {}
 
-        inline void set(const uint32_t &name_, const Expression &exp_) {
+        inline void set(const HashCode &name_, const Expression &exp_) {
             name = name_;
             exp = exp_;
         }
@@ -345,7 +346,7 @@ class Expressions: public vector<Expression> {
         return 1;
     }
 
-    inline Expression get(Pair *src_begin, Pair *src_end, const uint32_t &hashcode) {
+    inline Expression get(Pair *src_begin, Pair *src_end, const HashCode &hashcode) {
         Expression exp;
         Pair p(hashcode, exp.AssignBool());
         Pair *ret = std::lower_bound(src_begin, src_end, p);
@@ -380,7 +381,7 @@ public:
             }
 
             if (isalpha(g)) {
-                uint32_t hashcode = 0;
+                HashCode hashcode = 0;
                 while (IsW(in[i]))
                     hashcode = hashcode * 131U + in[i ++];
                 Self::emplace_back(ret.AssignParameter(hashcode));
@@ -415,7 +416,7 @@ public:
                 // TODO: solve complex case
                 ++i;
                 int j = 0;
-                uint32_t hashcode = 0;
+                HashCode hashcode = 0;
                 while ((g = in[i++]) != '\'')
                     hashcode = hashcode * 131U + g;
                 Self::emplace_back(ret.Assign(hashcode));
@@ -452,22 +453,22 @@ public:
     }
 
     template <typename iterable>
-    inline bool Matched(iterable& props) {
+    inline bool Match(const iterable &props) {
         Expression exp;
-        int cnt = 0, tot = props.count();
+        int cnt = 0, tot = props.size();
         Pair used[tot];
         for (auto it = props.begin(); cnt < tot; ++it, ++cnt) {
             auto type = it->Type();
-            uint32_t hashcode = 0;
+            HashCode hashcode = 0;
             const char *p = it->Name();
             int len = it->NameLen();
             for (int i = 0; i < len; ++i) {
                 hashcode = hashcode * 131U + p[i];
             }
             if (type == Expression::PropString) {
-                uint32_t hashcode2 = 0;
+                HashCode hashcode2 = 0;
                 const char *q = it->String();
-                len = it->StringLen();
+                len = it->ValLen();
                 for (int i = 0; i < len; ++i) {
                     hashcode2 = hashcode2 * 131U + q[i];
                 }
@@ -498,7 +499,4 @@ public:
         // assert(stack.Size() == 1);
         return stack.Top().val_bool.ans != Expression::False;
     }
-
-private:
-    HashMap<HashCode, Expression> dict;
 };
