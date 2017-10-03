@@ -343,6 +343,18 @@ class Expressions: public vector<Expression> {
         return 1;
     }
 
+    inline Expression get(Pair *src_begin, Pair *src_end, const uint32_t &hashcode) {
+        Expression exp;
+        Pair p(hashcode, exp.AssignBool());
+        Pair *ret = std::lower_bound(src_begin, src_end, p);
+
+        if (ret != src_end && ret->name == hashcode) {
+            return ret->exp;
+        } else {
+            return exp;
+        }
+    }
+
 public:
 
     inline friend ostream & operator << (ostream &w, const Expressions &exps) {
@@ -435,17 +447,6 @@ public:
 
         while (!stack.Empty())
             Self::emplace_back(stack.Pop());
-    }
-
-    inline Expression get(Pair *src_begin, Pair *src_end, const uint32_t &hashcode) {
-        Expression exp;
-        Pair p(hashcode, exp.AssignBool()), ret = (*std::lower_bound(src_begin, src_end, p));
-
-        if (ret.name == hashcode) {
-            return ret.exp;
-        } else {
-            return exp;
-        }
     }
 
     template <typename iterable>
