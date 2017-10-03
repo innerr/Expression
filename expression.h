@@ -66,11 +66,13 @@ struct Expression {
         }
     };
 
+    using HashCode = uint32_t;
+
     PropType type;
     CmpOp cmp_op;
-    unsigned name;
+    HashCode name;
 
-    unsigned val_string;
+    HashCode val_string;
     PropValInt val_int;
     PropValFloat val_float;
     Bool val_bool;
@@ -89,7 +91,7 @@ struct Expression {
         val_float = propValFloat;
         return *this;
     }
-    inline Expression & Assign(const unsigned& hashcode) {
+    inline Expression & Assign(const HashCode& hashcode) {
         type = PropString;
         val_string = hashcode;
         return *this;
@@ -110,7 +112,7 @@ struct Expression {
         return *this;
     }
 
-    inline Expression & AssignParameter(const unsigned &hashcode) {
+    inline Expression & AssignParameter(const HashCode &hashcode) {
         type = PropParameter;
         name = hashcode;
         return *this;
@@ -193,13 +195,13 @@ struct Expression {
     inline Expression & CalcAnd(const Bool &a, const Bool &b) {
         return AssignBool(a && b);
     }
-    inline Expression & CalcAnd(const unsigned &a, const unsigned &b) {
+    inline Expression & CalcAnd(const HashCode &a, const HashCode &b) {
         return AssignBool(a && b);
     }
     inline Expression & CalcOr(const Bool &a, const Bool &b) {
         return AssignBool(a || b);
     }
-    inline Expression & CalcOr(const unsigned &a, const unsigned &b) {
+    inline Expression & CalcOr(const HashCode &a, const HashCode &b) {
         return AssignBool(a || b);
     }
     inline float ToFloat() const {
@@ -390,6 +392,7 @@ struct Expressions : public vector<Expression> {
     using Self = vector<Expression>;
 
     using CmpOp = Expression::CmpOp;
+    using HashCode = Expression::HashCode;
 
     using PropValInt = Expression::PropValInt;
     using PropValFloat = Expression::PropValFloat;
@@ -430,7 +433,7 @@ struct Expressions : public vector<Expression> {
             }
             Expression ret;
             if (isalpha(g)) {
-                unsigned hashcode = 0;
+                HashCode hashcode = 0;
                 while (IsW(in[i]))
                     hashcode = hashcode * 131U + in[i ++];
                 dict.insert(hashcode, ret.AssignBool());
@@ -466,7 +469,7 @@ struct Expressions : public vector<Expression> {
                 // TODO: solve complex case
                 ++i;
                 int j = 0;
-                unsigned hashcode = 0;
+                HashCode hashcode = 0;
                 while ((g = in[i++]) != '\'')
                     hashcode = hashcode * 131U + g;
                 Self::emplace_back(ret.Assign(hashcode));
@@ -508,13 +511,13 @@ struct Expressions : public vector<Expression> {
         Expression exp;
         for (auto it = props.begin(); it != props.end(); ++it) {
             auto type = it->Type();
-            unsigned hashcode = 0;
+            HashCode hashcode = 0;
             const char *p = it->Name();
             int len = it->NameLen();
             for (int i = 0; i < len; ++i)
                 hashcode = hashcode * 131U + *(p + i);
             if (type == Expression::PropString) {
-                unsigned hashcode2 = 0;
+                HashCode hashcode2 = 0;
                 const char *q = it->String();
                 len = it->ValLen();
                 for (int i = 0; i < len; ++i)
@@ -549,5 +552,5 @@ struct Expressions : public vector<Expression> {
     }
 
 private:
-    HashMap<unsigned, Expression> dict;
+    HashMap<HashCode, Expression> dict;
 };
