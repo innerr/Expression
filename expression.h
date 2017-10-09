@@ -52,14 +52,8 @@ struct Expression {
         inline Bool operator == (const Bool &rhs) const {
             return (ans == Undefined || rhs.ans == Undefined) ? Bool(True) : Bool(ans == rhs.ans);
         }
-        inline Bool operator >= (const Bool &rhs) const {
-            return (ans == Undefined || rhs.ans == Undefined) ? Bool(True) : Bool(ans >= rhs.ans);
-        }
         inline Bool operator <= (const Bool &Rhs) const {
             return (ans == Undefined || Rhs.ans == Undefined) ? Bool(True) : Bool(ans <= Rhs.ans);
-        }
-        inline Bool operator > (const Bool &Rhs) const {
-            return (ans == Undefined || Rhs.ans == Undefined) ? Bool(True) : Bool(ans > Rhs.ans);
         }
         inline Bool operator < (const Bool &Rhs) const {
             return (ans == Undefined || Rhs.ans == Undefined) ? Bool(True) : Bool(ans < Rhs.ans);
@@ -108,13 +102,15 @@ struct Expression {
         val_bool = b;
         return *this;
     }
-
     inline Expression & AssignParameter(const HashCode &hashcode) {
         type = PropParameter;
         name = hashcode;
         return *this;
     }
-
+    inline Expression AssignLeftBracket() {
+        type = PropLeftBracket;
+        return *this;
+    }
     inline Expression & AssignExpOp(const char &op) {
         type = PropOp;
         if (op == '>')
@@ -127,7 +123,6 @@ struct Expression {
             assert(false);
         return *this;
     }
-
     inline Expression & AssignOp(const char &op) {
         type = PropOp;
         if (op == '&')
@@ -142,11 +137,6 @@ struct Expression {
             cmp_op = Lt;
         else
             assert(false);
-        return *this;
-    }
-
-    inline Expression LeftBracket() {
-        type = PropLeftBracket;
         return *this;
     }
 
@@ -177,50 +167,23 @@ struct Expression {
         return w << "??? ";
     }
 
-    template <typename T>
-    inline Expression & CalcEq(const T &a, const T &b) {
-        return AssignBool(a == b);
-    }
-    template <typename T>
-    inline Expression & CalcGe(const T &a, const T &b) {
-        return AssignBool(a >= b);
-    }
-    template <typename T>
-    inline Expression & CalcGt(const T &a, const T &b) {
-        return AssignBool(a > b);
-    }
-    template <typename T>
-    inline Expression & CalcAnd(const T &a, const T &b) {
-        return AssignBool(a && b);
-    }
-    template <typename T>
-    inline Expression & CalcOr(const T &a, const T &b) {
-        return AssignBool(a || b);
-    }
-    inline Expression & CalcAnd(const Bool &a, const Bool &b) {
-        return AssignBool(a && b);
-    }
-    inline Expression & CalcOr(const Bool &a, const Bool &b) {
-        return AssignBool(a || b);
-    }
-
     template <class T>
     inline Expression & Exec(const T &a, const T &b, const CmpOp &op) {
         switch (op) {
             case Or:
-                return CalcOr(a, b);
+                return AssignBool(a || b);
             case And:
-                return CalcAnd(a, b);
+                return AssignBool(a && b);
             case Eq:
-                return CalcEq(a, b);
+                return AssignBool(a == b);
             case Ge:
-                return CalcGe(a, b);
+                return AssignBool(b <= a);
             case Le:
-                return CalcGe(b, a);
+                return AssignBool(a <= b);
             case Gt:
-                return CalcGt(a, b);
+                return AssignBool(b < a);
             case Lt:
-                return CalcGt(b, a);
+                return AssignBool(a < b);
             default:
                 assert(false);
         }
@@ -254,7 +217,7 @@ class Expressions: public vector<Expression> {
         T *content;
 
     public:
-        inline explicit Stack(size_t capacity_ = 8) : capacity(capacity_) {
+        inline explicit Stack(size_t capacity_ = 32) : capacity(capacity_) {
             content = new T[capacity];
             tail = content;
         }
@@ -359,7 +322,7 @@ class Expressions: public vector<Expression> {
     }
 
     Stack<Expression> stack;
-    Pair used[8];
+    Pair used[16];
 
 public:
 
@@ -424,7 +387,7 @@ public:
                 Self::emplace_back(ret.Assign(hashcode));
             } else if (g == '(') {
                 ++i;
-                stack.Push(ret.LeftBracket());
+                stack.Push(ret.AssignLeftBracket());
             } else if (g == ')') {
                 ++i;
                 while(!stack.Empty() && stack.Top().type != Expression::PropLeftBracket)
